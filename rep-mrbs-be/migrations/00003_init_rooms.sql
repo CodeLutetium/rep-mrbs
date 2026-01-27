@@ -3,7 +3,7 @@
 CREATE TABLE mrbs.rooms
 (
     room_id serial NOT NULL,
-    area_id serial NOT NULL,
+    area_id integer NOT NULL,
     display_name text NOT NULL,
     sort_key text NOT NULL,
     description text,

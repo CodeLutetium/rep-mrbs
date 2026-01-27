@@ -3,10 +3,10 @@
 CREATE TABLE mrbs.bookings
 (
     booking_id serial NOT NULL,
-    user_id serial NOT NULL,
+    user_id integer NOT NULL,
     start_time timestamp with time zone NOT NULL,
     end_time timestamp with time zone NOT NULL,
-    room_id serial NOT NULL,
+    room_id integer NOT NULL,
     time_created timestamp with time zone NOT NULL DEFAULT now(),
     title text NOT NULL,
     description text,
