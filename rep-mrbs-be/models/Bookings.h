@@ -256,8 +256,11 @@ class Bookings
         needSelection = false;
             sql += "booking_id,";
             ++parametersCount;
+        if(dirtyFlag_[1])
+        {
             sql += "user_id,";
             ++parametersCount;
+        }
         if(dirtyFlag_[2])
         {
             sql += "start_time,";
@@ -268,8 +271,11 @@ class Bookings
             sql += "end_time,";
             ++parametersCount;
         }
+        if(dirtyFlag_[4])
+        {
             sql += "room_id,";
             ++parametersCount;
+        }
         sql += "time_created,";
         ++parametersCount;
         if(!dirtyFlag_[5])
@@ -309,7 +315,11 @@ class Bookings
         char placeholderStr[64];
         size_t n=0;
         sql +="default,";
-        sql +="default,";
+        if(dirtyFlag_[1])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
         if(dirtyFlag_[2])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -320,7 +330,11 @@ class Bookings
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        sql +="default,";
+        if(dirtyFlag_[4])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
         if(dirtyFlag_[5])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);

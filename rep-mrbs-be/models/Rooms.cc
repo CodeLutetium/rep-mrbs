@@ -26,7 +26,7 @@ const std::string Rooms::tableName = "mrbs.\"rooms\"";
 
 const std::vector<typename Rooms::MetaData> Rooms::metaData_={
 {"room_id","int32_t","integer",4,1,1,1},
-{"area_id","int32_t","integer",4,1,0,1},
+{"area_id","int32_t","integer",4,0,0,1},
 {"display_name","std::string","text",0,0,0,1},
 {"sort_key","std::string","text",0,0,0,1},
 {"description","std::string","text",0,0,0,0},
@@ -261,6 +261,7 @@ void Rooms::updateByMasqueradedJson(const Json::Value &pJson,
     }
     if(!pMasqueradingVector[1].empty() && pJson.isMember(pMasqueradingVector[1]))
     {
+        dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
             areaId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[1]].asInt64());
@@ -319,6 +320,7 @@ void Rooms::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("area_id"))
     {
+        dirtyFlag_[1] = true;
         if(!pJson["area_id"].isNull())
         {
             areaId_=std::make_shared<int32_t>((int32_t)pJson["area_id"].asInt64());
@@ -532,6 +534,7 @@ void Rooms::updateId(const uint64_t id)
 const std::vector<std::string> &Rooms::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
+        "area_id",
         "display_name",
         "sort_key",
         "description",
@@ -543,6 +546,17 @@ const std::vector<std::string> &Rooms::insertColumns() noexcept
 
 void Rooms::outputArgs(drogon::orm::internal::SqlBinder &binder) const
 {
+    if(dirtyFlag_[1])
+    {
+        if(getAreaId())
+        {
+            binder << getValueOfAreaId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[2])
     {
         if(getDisplayName())
@@ -603,6 +617,10 @@ void Rooms::outputArgs(drogon::orm::internal::SqlBinder &binder) const
 const std::vector<std::string> Rooms::updateColumns() const
 {
     std::vector<std::string> ret;
+    if(dirtyFlag_[1])
+    {
+        ret.push_back(getColumnName(1));
+    }
     if(dirtyFlag_[2])
     {
         ret.push_back(getColumnName(2));
@@ -628,6 +646,17 @@ const std::vector<std::string> Rooms::updateColumns() const
 
 void Rooms::updateArgs(drogon::orm::internal::SqlBinder &binder) const
 {
+    if(dirtyFlag_[1])
+    {
+        if(getAreaId())
+        {
+            binder << getValueOfAreaId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[2])
     {
         if(getDisplayName())
@@ -903,6 +932,11 @@ bool Rooms::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(1, "area_id", pJson["area_id"], err, true))
             return false;
     }
+    else
+    {
+        err="The area_id column cannot be null";
+        return false;
+    }
     if(pJson.isMember("display_name"))
     {
         if(!validJsonOfField(2, "display_name", pJson["display_name"], err, true))
@@ -965,6 +999,11 @@ bool Rooms::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[1] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1155,16 +1194,6 @@ bool Rooms::validJsonOfField(size_t index,
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
-                return false;
-            }
-            if(isForCreation)
-            {
-                err="The automatic primary key cannot be set";
-                return false;
-            }
-            else
-            {
-                err="The automatic primary key cannot be update";
                 return false;
             }
             if(!pJson.isInt())

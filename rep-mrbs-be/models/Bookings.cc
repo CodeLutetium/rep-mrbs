@@ -29,10 +29,10 @@ const std::string Bookings::tableName = "mrbs.\"bookings\"";
 
 const std::vector<typename Bookings::MetaData> Bookings::metaData_={
 {"booking_id","int32_t","integer",4,1,1,1},
-{"user_id","int32_t","integer",4,1,0,1},
+{"user_id","int32_t","integer",4,0,0,1},
 {"start_time","::trantor::Date","timestamp with time zone",0,0,0,1},
 {"end_time","::trantor::Date","timestamp with time zone",0,0,0,1},
-{"room_id","int32_t","integer",4,1,0,1},
+{"room_id","int32_t","integer",4,0,0,1},
 {"time_created","::trantor::Date","timestamp with time zone",0,0,0,1},
 {"title","std::string","text",0,0,0,1},
 {"description","std::string","text",0,0,0,0},
@@ -558,6 +558,7 @@ void Bookings::updateByMasqueradedJson(const Json::Value &pJson,
     }
     if(!pMasqueradingVector[1].empty() && pJson.isMember(pMasqueradingVector[1]))
     {
+        dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
             userId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[1]].asInt64());
@@ -617,6 +618,7 @@ void Bookings::updateByMasqueradedJson(const Json::Value &pJson,
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
     {
+        dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
             roomId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[4]].asInt64());
@@ -693,6 +695,7 @@ void Bookings::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("user_id"))
     {
+        dirtyFlag_[1] = true;
         if(!pJson["user_id"].isNull())
         {
             userId_=std::make_shared<int32_t>((int32_t)pJson["user_id"].asInt64());
@@ -752,6 +755,7 @@ void Bookings::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("room_id"))
     {
+        dirtyFlag_[4] = true;
         if(!pJson["room_id"].isNull())
         {
             roomId_=std::make_shared<int32_t>((int32_t)pJson["room_id"].asInt64());
@@ -1029,8 +1033,10 @@ void Bookings::updateId(const uint64_t id)
 const std::vector<std::string> &Bookings::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
+        "user_id",
         "start_time",
         "end_time",
+        "room_id",
         "time_created",
         "title",
         "description",
@@ -1042,6 +1048,17 @@ const std::vector<std::string> &Bookings::insertColumns() noexcept
 
 void Bookings::outputArgs(drogon::orm::internal::SqlBinder &binder) const
 {
+    if(dirtyFlag_[1])
+    {
+        if(getUserId())
+        {
+            binder << getValueOfUserId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[2])
     {
         if(getStartTime())
@@ -1058,6 +1075,17 @@ void Bookings::outputArgs(drogon::orm::internal::SqlBinder &binder) const
         if(getEndTime())
         {
             binder << getValueOfEndTime();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
+    {
+        if(getRoomId())
+        {
+            binder << getValueOfRoomId();
         }
         else
         {
@@ -1124,6 +1152,10 @@ void Bookings::outputArgs(drogon::orm::internal::SqlBinder &binder) const
 const std::vector<std::string> Bookings::updateColumns() const
 {
     std::vector<std::string> ret;
+    if(dirtyFlag_[1])
+    {
+        ret.push_back(getColumnName(1));
+    }
     if(dirtyFlag_[2])
     {
         ret.push_back(getColumnName(2));
@@ -1131,6 +1163,10 @@ const std::vector<std::string> Bookings::updateColumns() const
     if(dirtyFlag_[3])
     {
         ret.push_back(getColumnName(3));
+    }
+    if(dirtyFlag_[4])
+    {
+        ret.push_back(getColumnName(4));
     }
     if(dirtyFlag_[5])
     {
@@ -1157,6 +1193,17 @@ const std::vector<std::string> Bookings::updateColumns() const
 
 void Bookings::updateArgs(drogon::orm::internal::SqlBinder &binder) const
 {
+    if(dirtyFlag_[1])
+    {
+        if(getUserId())
+        {
+            binder << getValueOfUserId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[2])
     {
         if(getStartTime())
@@ -1173,6 +1220,17 @@ void Bookings::updateArgs(drogon::orm::internal::SqlBinder &binder) const
         if(getEndTime())
         {
             binder << getValueOfEndTime();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
+    {
+        if(getRoomId())
+        {
+            binder << getValueOfRoomId();
         }
         else
         {
@@ -1535,6 +1593,11 @@ bool Bookings::validateJsonForCreation(const Json::Value &pJson, std::string &er
         if(!validJsonOfField(1, "user_id", pJson["user_id"], err, true))
             return false;
     }
+    else
+    {
+        err="The user_id column cannot be null";
+        return false;
+    }
     if(pJson.isMember("start_time"))
     {
         if(!validJsonOfField(2, "start_time", pJson["start_time"], err, true))
@@ -1559,6 +1622,11 @@ bool Bookings::validateJsonForCreation(const Json::Value &pJson, std::string &er
     {
         if(!validJsonOfField(4, "room_id", pJson["room_id"], err, true))
             return false;
+    }
+    else
+    {
+        err="The room_id column cannot be null";
+        return false;
     }
     if(pJson.isMember("time_created"))
     {
@@ -1617,6 +1685,11 @@ bool Bookings::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[1] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1651,6 +1724,11 @@ bool Bookings::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[5].empty())
       {
@@ -1868,16 +1946,6 @@ bool Bookings::validJsonOfField(size_t index,
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
-            if(isForCreation)
-            {
-                err="The automatic primary key cannot be set";
-                return false;
-            }
-            else
-            {
-                err="The automatic primary key cannot be update";
-                return false;
-            }
             if(!pJson.isInt())
             {
                 err="Type error in the "+fieldName+" field";
@@ -1912,16 +1980,6 @@ bool Bookings::validJsonOfField(size_t index,
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
-                return false;
-            }
-            if(isForCreation)
-            {
-                err="The automatic primary key cannot be set";
-                return false;
-            }
-            else
-            {
-                err="The automatic primary key cannot be update";
                 return false;
             }
             if(!pJson.isInt())
