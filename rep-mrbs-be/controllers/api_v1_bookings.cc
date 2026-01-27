@@ -132,6 +132,8 @@ void bookings::getBookings(
             }
 
             auto response = HttpResponse::newHttpJsonResponse(ret);
+
+            LOG_DEBUG << "response size: " << ret.size();
             callback(response);
         },
         [callback](const drogon::orm::DrogonDbException &e) {
