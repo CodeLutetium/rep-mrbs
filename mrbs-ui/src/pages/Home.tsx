@@ -1,3 +1,4 @@
+import DailyBookings from "@/components/daily-bookings";
 import DailySchedule from "@/components/daily-schedule";
 import dayjs from 'dayjs';
 
@@ -10,7 +11,8 @@ export default function Home() {
                 {currDate.format('DD MMMM YYYY')}
             </h1>
 
-            <DailySchedule />
+            {/* <DailySchedule /> */}
+            <DailyBookings currDate={currDate} />
         </div>
     )
 }
