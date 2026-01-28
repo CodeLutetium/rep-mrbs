@@ -1,4 +1,5 @@
 import DailyBookings from "@/components/daily-bookings";
+import { DatePickerInput } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from "react";
@@ -13,15 +14,14 @@ export default function Home() {
                     Prev
                 </Button>
                 <h1 className="text-xl font-semibold text-center text-sky-900 dark:text-sky-100 ">
-                    {currDate.format('DD MMMM YYYY')}
+                    <DatePickerInput date={currDate} setDate={setCurrDate} />
                 </h1>
                 <Button onClick={() => (setCurrDate(currDate.add(1, 'day')))}>
                     Next
                 </Button>
             </div>
 
-
             <DailyBookings currDate={currDate} />
-        </div>
+        </div >
     )
 }
