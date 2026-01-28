@@ -113,9 +113,9 @@ void bookings::getBookings(
         "INNER JOIN mrbs.USERS u ON b.user_id = u.user_id "
         "INNER JOIN mrbs.ROOMS r ON b.room_id = r.room_id "
         // hardcoded start time
-        "WHERE b.start_time >= ($1 || ' 08:00')::timestamp "
+        "WHERE b.start_time >= ($1 || ' 08:00+08')::timestamptz "
         // hardcoded end time
-        "AND b.start_time < (($1::date + 1) || ' 02:00')::timestamp";
+        "AND b.start_time < (($1::date + 1) || ' 02:00+08')::timestamptz";
 
     dbClient->execSqlAsync(
         sql,
