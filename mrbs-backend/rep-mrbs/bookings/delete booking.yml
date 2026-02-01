@@ -1,0 +1,19 @@
+info:
+  name: delete booking
+  type: http
+  seq: 3
+
+http:
+  method: DELETE
+  url: http://localhost:8080/api/bookings?id=2
+  params:
+    - name: id
+      value: "2"
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

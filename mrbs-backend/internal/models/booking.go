@@ -12,5 +12,5 @@ type Booking struct {
 	Title       string    `gorm:"column:title"`
 	Description string    `gorm:"column:description"`
 	IcalUID     string    `gorm:"column:ical_uid"`
-	IcalSeq     string    `gorm:"column:ical_seq"`
+	IcalSeq     string    `gorm:"column:ical_seq; default:1"`
 }

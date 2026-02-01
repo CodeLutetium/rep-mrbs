@@ -1,0 +1,25 @@
+info:
+  name: new booking
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: http://localhost:8080/api/bookings/new
+  body:
+    type: json
+    data: |-
+      {
+        "room_id": "1",
+        "start_time": "2026-02-01 13:30",
+        "duration": 3,
+        "title": "study",
+        "description": ""
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

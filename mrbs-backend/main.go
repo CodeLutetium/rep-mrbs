@@ -1,10 +1,12 @@
 package main
 
 import (
-	"log/slog"
 	"os"
 
+	"rep-mrbs/internal/api"
 	"rep-mrbs/internal/api/auth"
+	"rep-mrbs/internal/api/bookings"
+	"rep-mrbs/internal/api/users"
 	"rep-mrbs/internal/db"
 
 	"github.com/gin-gonic/gin"
@@ -13,24 +15,40 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func init() {
+	_ = godotenv.Load("./config/.env")
+
+	_, exists := os.LookupEnv("SESSION_KEY_LIFETIME")
+	if !exists {
+		log.Fatal().Msg("SESSION_KEY_LIFETIME is not set in config/.env")
+	}
+}
+
 func main() {
 	// Configure Logger
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	_ = godotenv.Load("./config/.env")
-
 	db.Init()
 
-	router := gin.Default()
-	router.GET("/", func(ctx *gin.Context) {
-		slog.Info("inside the handler", "user_id", 123)
+	// pw, err := argon2id.CreateHash("1234", argon2id.DefaultParams)
+	// if err != nil {
+	// 	log.Error().Err(err).Msg("")
+	// }
+	// log.Debug().Msg(pw)
 
-		ctx.JSON(200, gin.H{"ping": "pong"})
-	})
+	router := gin.Default()
 
 	// Auth routes
 	authGroup := router.Group("/api/auth")
 	auth.RegisterAuthRoutes(authGroup)
+
+	// Booking routes
+	bookingGroup := router.Group("/api/bookings")
+	bookings.RegisterBookingRoutes(bookingGroup)
+
+	// User routes
+	userGroup := router.Group("/api/users", api.AuthGuard(2))
+	users.RegisterUserRoutes(userGroup)
 
 	_ = router.Run()
 }
