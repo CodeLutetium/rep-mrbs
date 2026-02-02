@@ -50,9 +50,7 @@ func HandleGetBookings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"bookings": bookings,
-	})
+	c.JSON(http.StatusOK, bookings)
 }
 
 // returns true if the date format is correct

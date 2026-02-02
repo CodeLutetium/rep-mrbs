@@ -22,6 +22,8 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
     useEffect(() => {
         async function loadData() {
             const bookings = await getBookings(currDate.format("YYYY-MM-DD"));
+            console.log(bookings);
+
             setBookings(bookings);
             console.log(bookings);
 
