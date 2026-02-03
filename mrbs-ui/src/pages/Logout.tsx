@@ -1,10 +1,10 @@
-import { useUser } from "@/context/user-context"
+import { useSetUser } from "@/context/user-context"
 import { logoutUser } from "@/services/auth-service"
 import { useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
 export default function Logout() {
-    const user = useUser()
+    const setUser = useSetUser()
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -17,13 +17,13 @@ export default function Logout() {
                 await logoutUser();
                 await delay(300)
                 if (isMounted) {
-                    user.setUser(null)
+                    setUser(null)
                     localStorage.clear()
                     navigate("/")
                 }
             } catch (err) {
                 console.error(err);
-                user.setUser(null)
+                setUser(null)
                 navigate("/")
             }
         }

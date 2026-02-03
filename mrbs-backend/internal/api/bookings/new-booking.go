@@ -2,6 +2,7 @@ package bookings
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -97,7 +98,7 @@ func HandleNewBooking(c *gin.Context) {
 	log.Debug().Int64("rows affected", result.RowsAffected).Msg("booking inserted into database")
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":    "Booking success, room has been booked.",
+		"message":    fmt.Sprintf("Booking success, %v has been booked from %v to %v.", models.GetRoomNameFromID(int(newBooking.RoomID)), newBooking.StartTime.Format(models.DateTimeFormat), newBooking.EndTime.Format(models.DateTimeFormat)),
 		"booking_id": newBooking.BookingID,
 	})
 }

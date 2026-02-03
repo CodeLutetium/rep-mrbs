@@ -9,6 +9,7 @@ import { Dialog } from "./ui/dialog";
 import NewBookingForm from "./new-booking-form";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/user-context";
+import { toast } from "sonner";
 dayjs.extend(isBetween);
 
 /**
@@ -121,6 +122,13 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
         setSelectedSlot({ room, time });
         setIsDialogOpen(true);
     };
+
+    // Handle successful booking creation 
+    const handleSuccess = (msg: string) => {
+        setIsDialogOpen(false);
+        setRefresh((r) => r + 1);
+        toast.success(msg)
+    }
 
     return (
         <div className="w-full h-full overflow-auto border rounded-md bd-card isolate">
@@ -242,7 +250,7 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 {
                     selectedSlot &&
-                    <NewBookingForm room={selectedSlot.room} time={selectedSlot.time} onSuccess={() => { setIsDialogOpen(false); setRefresh((r) => r + 1) }} />
+                    <NewBookingForm room={selectedSlot.room} time={selectedSlot.time} onSuccess={handleSuccess} />
                 }
             </Dialog>
         </div >

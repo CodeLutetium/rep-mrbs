@@ -11,12 +11,14 @@ import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "./u
 import { Textarea } from "./ui/textarea";
 import { useUser } from "@/context/user-context";
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { CalendarIcon } from "lucide-react"
 import { Calendar } from "./ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { newBooking, type NewBookingResponse } from "@/services/booking-service";
+import { newBooking } from "@/services/booking-service";
+import { toast } from "sonner";
+import { HttpStatusCode, type AxiosResponse } from "axios";
 
 export const bookingFormSchema = z.object({
     title: z.string().max(25).min(1, "Title cannot be empty"),
@@ -27,19 +29,33 @@ export const bookingFormSchema = z.object({
 })
 
 
-export default function NewBookingForm({ room, time, onSuccess }: { room: Room, time: Dayjs, onSuccess: () => void }) {
+export default function NewBookingForm({ room, time, onSuccess }: { room: Room, time: Dayjs, onSuccess: (msg: string) => void }) {
+    // 1. Setup Grid Constants
+    // Grid starts at 8:00 AM of the selected day
+    const gridStartTime = useMemo(() => time.hour(8).minute(0).second(0), [time]);
+    // 36 slots * 30 mins = 18 hours. 08:00 + 18h = 02:00 AM (Next Day)
+    const TOTAL_SLOTS = 36;
+
+    // Generate valid start times
+    const TIME_SLOTS: Array<Dayjs> = useMemo(() =>
+        Array.from({ length: TOTAL_SLOTS }, (_, i) => gridStartTime.add(i * 30, "minute")),
+        [gridStartTime]);
+
+    // Base duration options (1 to 6 blocks)
+    const baseDurationOptions = [1, 2, 3, 4, 5, 6];
+
     const user = useUser()
     const [open, setOpen] = useState(false);
-    const currDate = time.set("hour", 8).set("minute", 0).set("second", 0)
-    const TIME_SLOTS: Array<Dayjs> = Array.from({ length: 36 }, (_, i) => { return currDate.add(i * 30, "minute") })
-    const durationOptions: Array<number> = [...Array(6)].map((_, i) => i + 1)
+
 
     async function onSubmit(values: z.infer<typeof bookingFormSchema>) {
         try {
-            const booking: NewBookingResponse = await newBooking(values)
+            const res: AxiosResponse = await newBooking(values)
 
-            if (booking.booking_id) {
-                onSuccess()
+            if (res.status == HttpStatusCode.Created) {
+                onSuccess(res.data.message)
+            } else {
+                toast.error(res.data.error)
             }
         } catch (err) {
             console.error(err);
@@ -52,17 +68,20 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
             title: "",
             room_id: room.room_id,
             description: user?.display_name,
-            start_time: time,
+            start_time: TIME_SLOTS.find((t) => t.toISOString() == time.toISOString()),
             duration: 2, // 1 hour
         }
     })
 
+    // Clear form state if user closes form.
     useEffect(() => {
+        const matchingSlotReference = TIME_SLOTS.find((slot) => slot.isSame(time, 'minute'));
+
         form.reset({
             title: "",
             room_id: room.room_id,
             description: user?.display_name,
-            start_time: time, // The new time prop
+            start_time: matchingSlotReference || time,
             duration: 2,
         });
     }, [time, room, user, form]);
@@ -74,6 +93,34 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
         const newDate = dayjs(date).hour(currentFullDate.hour()).minute(currentFullDate.minute())
         form.setValue("start_time", newDate)
     }
+
+    const watchedStartTime = form.watch("start_time")
+    const watchedDuration = form.watch("duration")
+
+    // Generate durations before 2am.
+    const availableDurations = useMemo(() => {
+        if (!watchedStartTime) return baseDurationOptions;
+
+        const diffInMinutes = watchedStartTime.diff(gridStartTime, 'minute');
+        const currentSlotIndex = Math.floor(diffInMinutes / 30);
+
+        // Slots remaining until 2:00 AM
+        const slotsRemaining = TOTAL_SLOTS - currentSlotIndex;
+
+        // Filter options that would exceed 2:00 AM
+        return baseDurationOptions.filter(d => d <= slotsRemaining);
+    }, [watchedStartTime, gridStartTime]);
+
+    // Safety Clamp
+    // If user selected "3 hours" at 8:00 PM, then moved time to 1:30 AM, 
+    // "3 hours" is now invalid. We must force-reduce it.
+    useEffect(() => {
+        const maxDuration = Math.max(...availableDurations);
+        if (watchedDuration > maxDuration) {
+            form.setValue("duration", maxDuration);
+        }
+    }, [watchedStartTime, availableDurations, watchedDuration, form]);
+
 
     return (
         <DialogContent className="sm:max-w-106.25">
@@ -128,7 +175,7 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                     />
 
                     {/* Calendar and time*/}
-                    <div className=" flex flex-row">
+                    <div className="flex flex-row">
                         <FieldLabel htmlFor="start_time">Start</FieldLabel>
                         <Controller
                             name="start_time"
@@ -161,13 +208,19 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                             control={form.control}
                             render={({ field }) => (
                                 <Field>
-                                    <Select onValueChange={field.onChange} value={field.value.format("hh:mm A")} name={field.name}>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                        name={field.name}
+                                    >
                                         <SelectTrigger>
-                                            <SelectValue />
+                                            <SelectValue render={<div>{field.value.format("hh:mm A")}</div>} />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent >
                                             {TIME_SLOTS.map((slot) => (
-                                                <SelectItem value={slot}>{slot.format("hh:mm A")}</SelectItem>
+                                                <SelectItem value={slot} key={slot.format("hh:mm A")}>
+                                                    {slot.format("hh:mm A")}
+                                                </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -182,23 +235,29 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                         render={({ field }) => (
                             <Field>
                                 <Label>Duration (max 3 hours)</Label>
-                                <Select onValueChange={field.onChange} value={`${field.value * 0.5} hour${field.value > 2 ? 's' : ''} (${form.getValues("start_time").add(field.value * 30, 'minutes').format("hh:mm A")})`} name={field.name}>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                    name={field.name}
+                                >
                                     <SelectTrigger>
-                                        <SelectValue />
+                                        <SelectValue>
+                                            {watchedDuration * 0.5} hour{watchedDuration > 2 ? 's' : ''}
+                                            <span className="ml-1 text-muted-foreground">
+                                                ({watchedStartTime.add(watchedDuration * 30, 'minutes').format("hh:mm A")})
+                                            </span>
+                                        </SelectValue>
+
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {
-                                            durationOptions.map((duration) =>
-                                                <SelectItem value={duration}>
-                                                    <>
-                                                        {form.getValues("start_time").add(duration * 30, 'minutes').format("hh:mm A")}
-                                                        <span className="text-gray-800 dark:text-gray-200">
-                                                            ({duration * 0.5} hour{duration > 2 && 's'})
-                                                        </span>
-                                                    </>
-                                                </SelectItem>)
-                                        }
-
+                                        {availableDurations.map((duration) => (
+                                            <SelectItem key={duration} value={duration}>
+                                                {duration * 0.5} hour{duration > 2 && 's'}
+                                                <span className="ml-2 text-muted-foreground">
+                                                    ({watchedStartTime.add(duration * 30, 'minutes').format("hh:mm A")})
+                                                </span>
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </Field>
@@ -209,7 +268,7 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                     <Button type="submit" >Save booking</Button>
                 </DialogFooter>
             </form>
-        </DialogContent>
+        </DialogContent >
     )
 }
 

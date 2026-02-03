@@ -12,7 +12,7 @@ export default function Navbar() {
     const user = useUser();
 
     return (
-        <div className="min-h-16  sticky min-w-full flex items-center justify-between">
+        <div className="min-h-16 px-4  sticky min-w-full flex items-center justify-between">
             <Link className="flex flex-col font-semibold text-primary " to={"/"}  >
                 <div>
                     North Hill REP
