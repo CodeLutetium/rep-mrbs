@@ -2,7 +2,7 @@ import { bookingFormSchema } from "@/components/new-booking-form";
 import axiosInstance from "./axios-interceptor";
 import type { Booking } from "@/models/booking";
 import * as z from "zod"
-import type { Axios, AxiosResponse } from "axios";
+import type { AxiosResponse } from "axios";
 
 export async function getBookings(date: string): Promise<Booking[]> {
     return await axiosInstance.get(`/bookings?date=${date}`)

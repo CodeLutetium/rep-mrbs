@@ -1,7 +1,7 @@
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+import { Button, buttonVariants } from "./ui/button";
 import type { Dayjs } from "dayjs";
 import * as z from "zod"
 import { type Room } from "@/models/rooms";
@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { newBooking } from "@/services/booking-service";
 import { toast } from "sonner";
 import { HttpStatusCode, type AxiosResponse } from "axios";
+import { cn } from "@/lib/utils";
 
 export const bookingFormSchema = z.object({
     title: z.string().max(25).min(1, "Title cannot be empty"),
@@ -141,7 +142,6 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                                     type="text"
                                     required
                                     placeholder="Purpose of booking"
-                                    area-invalid={fieldState.invalid}
                                     aria-required
                                 />
                                 {fieldState.invalid && (
@@ -162,7 +162,6 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                                     id="description"
                                     placeholder=""
                                     rows={3}
-                                    area-invalid={fieldState.invalid}
                                 />
                                 <FieldDescription className="text-xs">
                                     People involved (names and batch)
@@ -184,10 +183,10 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                                 <Field>
                                     <Popover open={open} onOpenChange={setOpen}>
                                         <PopoverTrigger>
-                                            <Button variant={"outline"} className={"w-32 justify-between font-normal"}>
+                                            <div className={cn(buttonVariants({ variant: "outline" }), "w-32 justify-between font-normal")}>
                                                 {field.value.format("DD MMM YYYY")}
                                                 <CalendarIcon />
-                                            </Button>
+                                            </div>
 
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto overflow-hidden p-0" align="start">
