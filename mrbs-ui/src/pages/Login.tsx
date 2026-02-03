@@ -1,7 +1,18 @@
+import { LoginForm } from "@/components/login-form"
+
 export default function Login() {
     return (
-        <h1 className="text-sm">
-            Login page
-        </h1>
+        <div className="flex h-full flex-col items-center justify-center gap-6 p-6 md:p-10">
+            <div className="flex w-full max-w-sm flex-col gap-6">
+                <div className="flex items-center gap-2 self-center font-medium text-2xl text-[#181C62] dark:text-sky-50">
+                    {/* <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"> */}
+                    {/*     <GalleryVerticalEnd className="size-4" /> */}
+                    {/* </div> */}
+                    <img src="/rep-logo.jpg" className="size-8 dark:hidden" />
+                    NTU REP
+                </div>
+                <LoginForm />
+            </div>
+        </div>
     )
 }

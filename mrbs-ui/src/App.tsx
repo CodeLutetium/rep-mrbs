@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Navbar from './components/navbar';
 import { UserProvider } from './context/user-context';
+import Logout from './pages/Logout';
 
 export function App() {
 
@@ -17,6 +18,7 @@ export function App() {
                             <Routes>
                                 <Route path="/" element={<Home />} />
                                 <Route path="/login" element={<Login />} />
+                                <Route path='/logout' element={<Logout />} />
                             </Routes>
                         </main>
                     </div>

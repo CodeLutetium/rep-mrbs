@@ -28,7 +28,6 @@ type LoginForm struct {
 type LoginResponse struct {
 	Sucess      bool   `json:"success"`
 	Error       string `json:"error"`
-	SessionKey  string `json:"session"`
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
 }
@@ -142,10 +141,19 @@ func HandleLogin(c *gin.Context) {
 	}
 	log.Info().Int64("num rows inserted", result.RowsAffected).Msg("New session created")
 
-	c.SetCookie("session", sessionKey, 604800, "/", "localhost", true, false)
+	c.SetCookieData(&http.Cookie{
+		Name:     "session",
+		Value:    sessionKey,
+		MaxAge:   7 * 24 * 60 * 60,
+		Path:     "/",
+		Secure:   true,
+		SameSite: http.SameSiteDefaultMode,
+		HttpOnly: true,
+	})
+
+	// c.SetCookie("session", sessionKey, 604800, "/", "localhost", true, true)
 	c.JSON(http.StatusOK, LoginResponse{
 		Sucess:      true,
-		SessionKey:  sessionKey,
 		Username:    user.Name,
 		DisplayName: user.DisplayName,
 	})

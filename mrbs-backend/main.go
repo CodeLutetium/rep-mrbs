@@ -9,6 +9,7 @@ import (
 	"rep-mrbs/internal/api/users"
 	"rep-mrbs/internal/db"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
@@ -30,11 +31,11 @@ func main() {
 
 	db.Init()
 
-	// pw, err := argon2id.CreateHash("1234", argon2id.DefaultParams)
-	// if err != nil {
-	// 	log.Error().Err(err).Msg("")
-	// }
-	// log.Debug().Msg(pw)
+	pw, err := argon2id.CreateHash("1234", argon2id.DefaultParams)
+	if err != nil {
+		log.Error().Err(err).Msg("")
+	}
+	log.Debug().Msg(pw)
 
 	router := gin.Default()
 
