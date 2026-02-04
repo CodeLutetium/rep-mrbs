@@ -5,6 +5,7 @@ import { Dayjs } from "dayjs";
  * */
 export interface Booking {
     booked_by: string;
+    booked_by_username: string;
     booking_id: string;
     description: string;
     end_time: string;

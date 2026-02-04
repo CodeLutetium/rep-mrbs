@@ -22,8 +22,9 @@ import { useSetUser } from "@/context/user-context"
 
 export function LoginForm({
     className,
+    redirect,
     ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { redirect: string | null }) {
     const [user, setUser] = useState("")
     const [password, setPassword] = useState("")
     const [errorMessage, setErrorMessage] = useState("")
@@ -50,7 +51,7 @@ export function LoginForm({
                 display_name: res.display_name,
                 email: res.email,
             })
-            navigate("/")
+            navigate({ pathname: "/", search: redirect ? `?date=${redirect}` : "" })
         }
     }
 

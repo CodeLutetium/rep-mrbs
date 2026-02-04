@@ -124,7 +124,7 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
 
         // If user is not logged in, redirect to login page.
         if (user == null)
-            navigate("/login")
+            navigate(`/login?redirect=${time.format("YYYY-MM-DD")}`)
 
         setSelectedSlot({ room, time });
         setIsNewBookingDialogOpen(true);
@@ -140,6 +140,12 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
         setIsNewBookingDialogOpen(false);
         setRefresh((r) => r + 1);
         toast.success(msg)
+    }
+
+    // Handle successful booking deletion
+    const handleDelete = () => {
+        setIsBookingDialogOpen(false);
+        setRefresh((r) => r + 1);
     }
 
     return (
@@ -269,7 +275,7 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
             <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
                 {
                     selectedBooking &&
-                    <BookingDialog booking={selectedBooking} />
+                    <BookingDialog booking={selectedBooking} onDelete={handleDelete} />
                 }
             </Dialog>
         </div >

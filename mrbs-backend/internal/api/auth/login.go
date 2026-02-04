@@ -30,6 +30,7 @@ type LoginResponse struct {
 	Error       string `json:"error"`
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
+	Email       string `json:"email"`
 }
 
 const defaultInternalErrorMsg = "Error encountered when logging in, please try again later."
@@ -156,6 +157,7 @@ func HandleLogin(c *gin.Context) {
 		Sucess:      true,
 		Username:    user.Name,
 		DisplayName: user.DisplayName,
+		Email:       user.Email,
 	})
 }
 

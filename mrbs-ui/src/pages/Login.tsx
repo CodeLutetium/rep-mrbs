@@ -1,14 +1,19 @@
 import { LoginForm } from "@/components/login-form"
 import { useUser } from "@/context/user-context"
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 export default function Login() {
     const user = useUser();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+
+    const redirect = searchParams.get("redirect")
 
     // Redirect if user is already logged in.
     if (user)
-        navigate("/");
+        navigate({ pathname: "/", search: redirect ? `?date=${redirect}` : "" });
+
 
     return (
         <div className="flex h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
@@ -28,7 +33,7 @@ export default function Login() {
                         <ArrowLeft />
                         Back to home
                     </div>
-                    <LoginForm />
+                    <LoginForm redirect={redirect} />
                 </div>
             </div>
         </div>

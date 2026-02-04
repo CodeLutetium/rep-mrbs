@@ -4,9 +4,13 @@ import { Button } from "@/components/ui/button";
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react"
+import { useSearchParams } from "react-router-dom";
 
 export default function Home() {
-    const [currDate, setCurrDate] = useState<Dayjs>(dayjs());
+    const [searchParams] = useSearchParams();
+    const selectedDate = searchParams.get("date") || dayjs().format("YYYY-MM-DD");
+    const [currDate, setCurrDate] = useState<Dayjs>(dayjs(selectedDate));
+
 
     return (
         <div className="w-full h-full flex flex-col space-y-4">

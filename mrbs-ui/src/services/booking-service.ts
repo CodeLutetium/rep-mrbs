@@ -39,3 +39,7 @@ export async function newBooking(data: z.infer<typeof bookingFormSchema>): Promi
     const res = await axiosInstance.post("/bookings/new", payload, { headers: { "Content-Type": "application/json", }, validateStatus: (status) => status < 501 })
     return res;
 }
+
+export async function deleteBooking(booking_id: string): Promise<AxiosResponse> {
+    return await axiosInstance.delete("/bookings", { params: { id: booking_id }, validateStatus: (status) => status < 501 })
+}

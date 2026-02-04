@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Button, buttonVariants } from "./ui/button";
 import type { Dayjs } from "dayjs";
 import * as z from "zod"
-import { type Room } from "@/models/rooms";
+import { Rooms, type Room } from "@/models/rooms";
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "./ui/field";
@@ -130,6 +130,28 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
             </DialogHeader>
             <form className="grid gap-4 py-4" onSubmit={form.handleSubmit(onSubmit)}>
                 <FieldGroup>
+                    <Controller
+                        name="room_id"
+                        control={form.control}
+                        render={({ field }) => (
+                            <Field>
+                                <FieldLabel htmlFor="room">Room</FieldLabel>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                    name={field.name}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue render={<div>{Rooms[Number(field.value) - 1].display_name}</div>} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Rooms.map((room) => <SelectItem value={room.room_id}>{room.display_name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </Field>
+                        )}
+
+                    />
                     <Controller
                         name="title"
                         control={form.control}
