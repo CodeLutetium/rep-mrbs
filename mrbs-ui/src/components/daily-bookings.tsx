@@ -10,6 +10,7 @@ import NewBookingForm from "./new-booking-form";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/context/user-context";
 import { toast } from "sonner";
+import BookingDialog from "./booking";
 dayjs.extend(isBetween);
 
 /**
@@ -23,8 +24,14 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
     const [bookings, setBookings] = useState<Booking[]>([]);
 
     const [now, setNow] = useState(dayjs()); // Track current time (for the red line)
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    // Booking dialogs
+    const [isNewBookingDialogOpen, setIsNewBookingDialogOpen] = useState(false); // New booking form
+    const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false); // Existing bookings
+
     const [selectedSlot, setSelectedSlot] = useState<{ room: Room; time: Dayjs; } | null>(null);
+    const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+
     const navigate = useNavigate();
     const user = useUser();
     const [refresh, setRefresh] = useState(1);
@@ -120,12 +127,17 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
             navigate("/login")
 
         setSelectedSlot({ room, time });
-        setIsDialogOpen(true);
+        setIsNewBookingDialogOpen(true);
     };
+
+    const handleBookingClick = (booking: Booking) => {
+        setSelectedBooking(booking);
+        setIsBookingDialogOpen(true);
+    }
 
     // Handle successful booking creation 
     const handleSuccess = (msg: string) => {
-        setIsDialogOpen(false);
+        setIsNewBookingDialogOpen(false);
         setRefresh((r) => r + 1);
         toast.success(msg)
     }
@@ -212,8 +224,8 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
                             key={booking.booking_id}
                             className="group truncate z-10 m-1 rounded bg-sky-100 border-l-4 border-sky-500 dark:bg-sky-900/80 dark:border-sky-400 p-2 text-xs shadow-sm hover:brightness-95 cursor-pointer overflow-hidden flex flex-col justify-center "
                             style={style}
-                            title={`${booking.title} (${dayjs(booking.start_time).format("HH:mm")} - ${dayjs(booking.end_time).format("HH:mm")})`
-                            }
+                            title={`${booking.title} (${dayjs(booking.start_time).format("HH:mm")} - ${dayjs(booking.end_time).format("HH:mm")})`}
+                            onClick={() => handleBookingClick(booking)}
                         >
                             <div className="font-semibold text-sky-900 dark:text-sky-100 truncate">
                                 {booking.title}
@@ -247,10 +259,17 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
 
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isNewBookingDialogOpen} onOpenChange={setIsNewBookingDialogOpen}>
                 {
                     selectedSlot &&
                     <NewBookingForm room={selectedSlot.room} time={selectedSlot.time} onSuccess={handleSuccess} />
+                }
+            </Dialog>
+
+            <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+                {
+                    selectedBooking &&
+                    <BookingDialog booking={selectedBooking} />
                 }
             </Dialog>
         </div >
