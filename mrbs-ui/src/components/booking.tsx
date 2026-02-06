@@ -7,7 +7,7 @@ import dayjs, { Dayjs } from "dayjs";
 import { useUser } from "@/context/user-context";
 import { Button, buttonVariants } from "./ui/button";
 import { Trash } from "lucide-react"
-import { deleteBooking } from "@/services/booking-service";
+import { deleteBooking, editBooking } from "@/services/booking-service";
 import { HttpStatusCode } from "axios";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react"
 import { Calendar } from "./ui/calendar";
 
-const editBookingSchema = z.object({
+export const editBookingSchema = z.object({
     title: z.string().min(1, "Title cannot be empty!").max(25),
     room_id: z.string(),
     description: z.string().max(250).optional(),
@@ -30,7 +30,7 @@ const editBookingSchema = z.object({
     duration: z.int().min(1).max(6),
 })
 
-export default function BookingDialog({ booking, onDelete }: { booking: Booking, onDelete: () => void }) {
+export default function BookingDialog({ booking, onDelete, onUpdate }: { booking: Booking, onDelete: () => void, onUpdate: () => void }) {
     const user = useUser();
     const isBookingOwner = user?.name == booking.booked_by_username; // true if current user is the one who made this booking.
 
@@ -103,8 +103,18 @@ export default function BookingDialog({ booking, onDelete }: { booking: Booking,
     }, [watchedStartTime, availableDurations, watchedDuration, form]);
 
 
-    const onSubmit = () => {
-
+    const onSubmit = async (values: z.infer<typeof editBookingSchema>) => {
+        try {
+            const res = await editBooking(booking.booking_id, values)
+            if (res.status == 200) {
+                toast.success(res.data.message)
+                onUpdate()
+            } else {
+                toast.error(res.data.error)
+            }
+        } catch (err) {
+            console.error(err);
+        }
     }
 
 
@@ -301,8 +311,7 @@ export default function BookingDialog({ booking, onDelete }: { booking: Booking,
                                     )
                                 }
                                 }
-                            />
-                        ) : (
+                            />) : (
                             <Input className="col-span-2" value={dayjs(booking.start_time).format("hh:mm A")} disabled />
                         )}
                     </Field>

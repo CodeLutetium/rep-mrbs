@@ -148,6 +148,12 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
         setRefresh((r) => r + 1);
     }
 
+    // Handle successful booking update
+    const handleUpdate = () => {
+        setIsBookingDialogOpen(false);
+        setRefresh((r) => r + 1);
+    }
+
     return (
         <div className="w-full h-full overflow-auto border rounded-md bd-card isolate">
             <div
@@ -275,7 +281,7 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
             <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
                 {
                     selectedBooking &&
-                    <BookingDialog booking={selectedBooking} onDelete={handleDelete} />
+                    <BookingDialog booking={selectedBooking} onDelete={handleDelete} onUpdate={handleUpdate} />
                 }
             </Dialog>
         </div >
