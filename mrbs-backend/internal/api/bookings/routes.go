@@ -13,4 +13,5 @@ func RegisterBookingRoutes(router *gin.RouterGroup) {
 
 	router.POST("/new", api.AuthGuard(1), HandleNewBooking)
 	router.DELETE("/", api.AuthGuard(1), HandleDeleteBooking)
+	router.POST("/:booking-id/edit", api.AuthGuard(1), HandleEditBooking)
 }
