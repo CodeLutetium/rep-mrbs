@@ -2,7 +2,7 @@ import { getOpeningTime, type Booking } from "@/models/booking";
 import { Rooms, type Room } from "@/models/rooms";
 import { getBookings } from "@/services/booking-service";
 import dayjs, { Dayjs } from "dayjs";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import React from "react"
 import isBetween from "dayjs/plugin/isBetween";
 import { Dialog } from "./ui/dialog";
@@ -35,6 +35,24 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
     const navigate = useNavigate();
     const user = useUser();
     const [refresh, setRefresh] = useState(1);
+
+    // For scrolling the current time into view automatically
+    const curTimeRef = useRef<HTMLDivElement>(null)
+
+    // Auto-scroll effect
+    useEffect(() => {
+        // check if the view date is the same as actual today
+        const isToday = currDate.isSame(dayjs(), 'day');
+
+        // If it is today, and the red line exists in the DOM
+        if (isToday && curTimeRef.current) {
+            curTimeRef.current.scrollIntoView({
+                behavior: "smooth", // make it slide instead of jump
+                block: "center",    // This forces the element to the middle of the viewport
+                inline: "nearest"
+            });
+        }
+    }, [currDate]); // Re-run if user switches dates
 
     // Load bookings data
     useEffect(() => {
@@ -255,6 +273,7 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
                 {/* --- CURRENT TIME INDICATOR --- */}
                 {timePos && (
                     <div
+                        ref={curTimeRef}
                         className="z-50 border-t-2 border-red-500 w-full pointer-events-none flex items-center"
                         style={{
                             gridColumn: '1 / -1', // Span entire width

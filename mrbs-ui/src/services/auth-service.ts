@@ -1,4 +1,6 @@
+import type { AxiosResponse } from "axios";
 import axiosInstance from "./axios-interceptor";
+import { changePasswordSchema, type ChangePasswordValues } from "@/components/change-password-form";
 
 interface LoginResponse {
     success: boolean;
@@ -31,4 +33,15 @@ export async function logoutUser(): Promise<string> {
             console.error(err);
             return ""
         })
+}
+
+export async function changePassword(data: ChangePasswordValues): Promise<AxiosResponse> {
+    const validatedData = changePasswordSchema.safeParse(data)
+
+    if (!validatedData.success) {
+        console.error(validatedData.error);
+        Promise.reject();
+    }
+
+    return await axiosInstance.post("/auth/change-password", validatedData.data, { headers: { "Content-Type": "application/json" }, validateStatus: (status) => status < 501 })
 }

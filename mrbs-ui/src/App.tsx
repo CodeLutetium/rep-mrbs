@@ -5,6 +5,7 @@ import { UserProvider } from './context/user-context';
 import Logout from './pages/Logout';
 import { Toaster } from './components/ui/sonner';
 import { MainLayout } from './components/layout';
+import ChangePassword from './pages/ChangePassword';
 
 export function App() {
 
@@ -21,6 +22,7 @@ export function App() {
                         {/* Main routes */}
                         <Route element={<MainLayout />}>
                             <Route path="/" element={<Home />} />
+                            <Route path='/change-password' element={<ChangePassword />} />
                         </Route>
                     </Routes>
 
