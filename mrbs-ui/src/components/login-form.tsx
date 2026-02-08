@@ -46,6 +46,8 @@ export function LoginForm({
             localStorage.setItem("display_name", res.display_name)
             localStorage.setItem("username", res.username)
             localStorage.setItem("email", res.email)
+            localStorage.setItem("level", res.level)
+
             setUserContext({
                 name: res.username,
                 display_name: res.display_name,

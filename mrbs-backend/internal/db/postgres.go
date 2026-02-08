@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alexedwards/argon2id"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose"
@@ -74,4 +75,28 @@ func Init() {
 		log.Fatal().Err(err)
 	}
 	log.Info().Msg("Goose migrations applied")
+
+	// Add admin user if not exists
+	defaultPassword, exists := os.LookupEnv("DEFAULT_PASSWORD")
+	if !exists {
+		log.Fatal().Msg("DEFAULT_PASSWORD not set in config/.env")
+	}
+	pwhash, err := argon2id.CreateHash(defaultPassword, argon2id.DefaultParams)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating pwhash")
+	}
+
+	result := gorm.WithResult()
+	sql := `
+	INSERT INTO mrbs.users (level, name, display_name, password_hash, email)
+	values (2, 'MRBS_ADMIN', 'MRBS ADMIN', ?, 'rep@ntu.edu.sg')
+	ON CONFLICT (name) DO NOTHING;`
+
+	err = gorm.G[any](gormDB, result).Exec(context.Background(), sql, pwhash)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating admin user.")
+	}
+	if result.RowsAffected > 0 {
+		log.Info().Msg("Admin user with default password created.")
+	}
 }

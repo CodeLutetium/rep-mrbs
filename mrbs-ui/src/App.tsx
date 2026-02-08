@@ -9,6 +9,7 @@ import ChangePassword from './pages/ChangePassword';
 import PrivateRoutes from './components/private-route';
 import HelpPage from './pages/Help';
 import ForgotPasswordPage from './pages/ForgotPassword';
+import AdminPage from './pages/Admin';
 
 export function App() {
 
@@ -32,6 +33,9 @@ export function App() {
                                 <Route path='/logout' element={<Logout />} />
                                 <Route path='/change-password' element={<ChangePassword />} />
                             </Route>
+
+                            {/* Admin routes */}
+                            <Route path='/admin' element={<AdminPage />} />
                         </Route>
                     </Routes>
 

@@ -8,8 +8,6 @@ CREATE TABLE mrbs.sessions
     PRIMARY KEY (session_key)
 );
 
-ALTER TABLE IF EXISTS mrbs.sessions
-    OWNER to mrbs_admin;
 -- +goose StatementEnd
 
 -- +goose Down
