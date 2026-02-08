@@ -14,8 +14,6 @@ CREATE TABLE mrbs.areas
     PRIMARY KEY (area_id)
 );
 
-ALTER TABLE IF EXISTS mrbs.areas
-    OWNER to mrbs_admin;
 -- +goose StatementEnd
 
 -- +goose Down

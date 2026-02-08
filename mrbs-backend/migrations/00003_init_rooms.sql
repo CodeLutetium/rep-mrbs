@@ -17,8 +17,6 @@ CREATE TABLE mrbs.rooms
         NOT VALID
 );
 
-ALTER TABLE IF EXISTS mrbs.rooms
-    OWNER to mrbs_admin;
 -- +goose StatementEnd
 
 -- +goose Down

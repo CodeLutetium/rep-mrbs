@@ -22,12 +22,14 @@ export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const username = typeof window !== "undefined" ? localStorage.getItem("username") : null;
         const display_name = typeof window !== undefined ? localStorage.getItem("display_name") : null;
         const email = typeof window !== undefined ? localStorage.getItem("email") : null;
+        const level = typeof window !== undefined ? localStorage.getItem("level") : null;
 
         if (username && display_name && email) {
             const currUser: User = {
                 name: username,
                 display_name: display_name,
                 email: email,
+                level: Number(level),
             }
             setUser(currUser)
         }

@@ -14,8 +14,6 @@ CREATE TABLE mrbs.users
     PRIMARY KEY (user_id)
 );
 
-ALTER TABLE IF EXISTS mrbs.users
-    OWNER to mrbs_admin;
 -- +goose StatementEnd
 
 -- +goose Down

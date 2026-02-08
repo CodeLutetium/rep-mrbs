@@ -31,6 +31,7 @@ type LoginResponse struct {
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
 	Email       string `json:"email"`
+	Level       int    `json:"level"`
 }
 
 const defaultInternalErrorMsg = "Error encountered when logging in, please try again later."
@@ -52,7 +53,7 @@ func HandleLogin(c *gin.Context) {
 	db := db.GormDB
 
 	// Verify password
-	user, err := gorm.G[models.User](db).Table("mrbs.users").Where("name = ?", strings.ToLower(form.Username)).Take(context.Background())
+	user, err := gorm.G[models.User](db).Table("mrbs.users").Where("name = ?", strings.ToUpper(form.Username)).Take(context.Background())
 	if err == gorm.ErrRecordNotFound {
 		log.Warn().Err(err).Msg("username not found")
 		c.JSON(http.StatusOK, LoginResponse{
@@ -158,6 +159,7 @@ func HandleLogin(c *gin.Context) {
 		Username:    user.Name,
 		DisplayName: user.DisplayName,
 		Email:       user.Email,
+		Level:       user.Level,
 	})
 }
 

@@ -25,8 +25,6 @@ CREATE TABLE mrbs.bookings
         NOT VALID
 );
 
-ALTER TABLE IF EXISTS mrbs.bookings
-    OWNER to mrbs_admin;
 -- +goose StatementEnd
 
 -- +goose Down

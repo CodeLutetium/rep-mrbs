@@ -8,6 +8,7 @@ interface LoginResponse {
     username: string;
     display_name: string;
     email: string;
+    level: string;
 }
 
 export async function loginUser(user: string, password: string): Promise<LoginResponse> {

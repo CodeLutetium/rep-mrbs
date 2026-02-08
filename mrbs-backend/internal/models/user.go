@@ -12,9 +12,9 @@ type User struct {
 type PublicUser struct {
 	UserID      uint      `gorm:"column:user_id; primaryKey; autoIncrement" json:"user_id"`
 	Level       int       `gorm:"column:level" json:"level"`
-	Name        string    `gorm:"column:name" json:"name"`
+	Name        string    `gorm:"column:name; unique" json:"name"`
 	DisplayName string    `gorm:"column:display_name" json:"display_name"`
-	Email       string    `gorm:"column:email" json:"email"`
+	Email       string    `gorm:"column:email; unique" json:"email"`
 	TimeCreated time.Time `gorm:"column:time_created" json:"time_created"`
 	LastLogin   time.Time `gorm:"column:last_login" json:"last_login"`
 }
