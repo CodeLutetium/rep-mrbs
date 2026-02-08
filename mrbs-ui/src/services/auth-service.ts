@@ -45,3 +45,7 @@ export async function changePassword(data: ChangePasswordValues): Promise<AxiosR
 
     return await axiosInstance.post("/auth/change-password", validatedData.data, { headers: { "Content-Type": "application/json" }, validateStatus: (status) => status < 501 })
 }
+
+export async function resetPassword(email: string): Promise<AxiosResponse> {
+    return await axiosInstance.post("/auth/reset-password", { email: email }, { headers: { "Content-Type": "multipart/form-data" }, validateStatus: (status) => status < 501 })
+}

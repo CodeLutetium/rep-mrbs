@@ -105,7 +105,7 @@ export function LoginForm({
                                 <div className="flex items-center">
                                     <FieldLabel htmlFor="password">Password</FieldLabel>
                                     <a
-                                        href="#"
+                                        href="/reset-password"
                                         className="ml-auto text-sm underline-offset-4 hover:underline"
                                         tabIndex={-1}
                                     >
@@ -125,6 +125,9 @@ export function LoginForm({
                                     ) : (
                                         "Login"
                                     )}
+                                </Button>
+                                <Button type="reset" variant={"outline"} disabled={isLoading} onClick={() => navigate("/")} className={"cursor-pointer"}>
+                                    Back to home
                                 </Button>
                                 <FieldDescription className="text-center">
                                     {/* Don&apos;t have an account? <a href="#">Sign up</a> */}

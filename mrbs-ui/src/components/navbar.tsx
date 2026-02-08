@@ -8,7 +8,7 @@ import {
 import { useUser } from "@/context/user-context"
 import { Link, } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { LogOutIcon, KeyRound, ChevronDown } from "lucide-react";
+import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark } from "lucide-react";
 
 export default function Navbar() {
     const user = useUser();
@@ -45,6 +45,12 @@ export default function Navbar() {
                                                 Change password
                                             </Link>
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Link className="cursor-pointer" to={"/help"}>
+                                                <CircleQuestionMark />
+                                                Help
+                                            </Link>
+                                        </DropdownMenuItem>
                                         <DropdownMenuItem variant="destructive" asChild>
                                             <Link className="cursor-pointer" to={"/logout"}>
                                                 <LogOutIcon />
@@ -57,6 +63,8 @@ export default function Navbar() {
                         </div>
                         ) :
                             <NavigationMenuItem >
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/"}>Home</Link>} />
+                                <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/help"}>Help</Link>} />
                                 <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/login"}>Login</Link>} />
                             </NavigationMenuItem>
 

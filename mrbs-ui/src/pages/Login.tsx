@@ -1,7 +1,7 @@
 import { LoginForm } from "@/components/login-form"
 import { useUser } from "@/context/user-context"
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+
 export default function Login() {
     const user = useUser();
     const navigate = useNavigate();
@@ -28,13 +28,7 @@ export default function Login() {
                 <div className="flex items-center self-center text-lg">
                     Meeting Room Booking System
                 </div>
-                <div className="flex flex-col gap-2">
-                    <div className={"max-w-sm flex flex-row gap-2 text-muted-foreground text-sm items-center cursor-pointer hover:text-primary/75"} onClick={() => navigate(("/"))}>
-                        <ArrowLeft />
-                        Back to home
-                    </div>
-                    <LoginForm redirect={redirect} />
-                </div>
+                <LoginForm redirect={redirect} />
             </div>
         </div>
     )
