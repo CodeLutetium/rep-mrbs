@@ -52,6 +52,7 @@ export function LoginForm({
                 name: res.username,
                 display_name: res.display_name,
                 email: res.email,
+                level: Number(res.level),
             })
             navigate({ pathname: "/", search: redirect ? `?date=${redirect}` : "" })
         }
