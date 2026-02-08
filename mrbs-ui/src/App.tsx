@@ -1,8 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Navbar from './components/navbar';
 import { UserProvider } from './context/user-context';
+import Logout from './pages/Logout';
+import { Toaster } from './components/ui/sonner';
+import { MainLayout } from './components/layout';
+import ChangePassword from './pages/ChangePassword';
+import PrivateRoutes from './components/private-route';
+import HelpPage from './pages/Help';
+import ForgotPasswordPage from './pages/ForgotPassword';
 
 export function App() {
 
@@ -10,16 +16,26 @@ export function App() {
         <>
             <UserProvider>
                 <BrowserRouter>
-                    <div className='md:h-svh flex flex-col space-y-2 '>
-                        <Navbar />
+                    <Routes>
 
-                        <main className='flex-1 min-h-0 my-4'>
-                            <Routes>
-                                <Route path="/" element={<Home />} />
-                                <Route path="/login" element={<Login />} />
-                            </Routes>
-                        </main>
-                    </div>
+                        {/* Routes without navbar */}
+                        <Route path="/login" element={<Login />} />
+                        <Route path='/reset-password' element={<ForgotPasswordPage />} />
+
+                        {/* Main routes */}
+                        <Route element={<MainLayout />}>
+                            <Route path="/" element={<Home />} />
+                            <Route path='/help' element={<HelpPage />} />
+
+                            {/* Private routes */}
+                            <Route element={<PrivateRoutes />}>
+                                <Route path='/logout' element={<Logout />} />
+                                <Route path='/change-password' element={<ChangePassword />} />
+                            </Route>
+                        </Route>
+                    </Routes>
+
+                    <Toaster />
                 </BrowserRouter>
             </UserProvider>
         </>

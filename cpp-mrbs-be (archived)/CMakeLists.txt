@@ -74,7 +74,9 @@ drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
 
 target_include_directories(${PROJECT_NAME}
                            PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/models ${Drogon_SOURCE_DIR}/lib/inc)
+                                   ${CMAKE_CURRENT_SOURCE_DIR}/models ${Drogon_SOURCE_DIR}/lib/inc PRIVATE ${SODIUM_INCLUDE_DIRS})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${SODIUM_LIBRARIES})
 target_sources(${PROJECT_NAME}
                PRIVATE
                ${SRC_DIR}

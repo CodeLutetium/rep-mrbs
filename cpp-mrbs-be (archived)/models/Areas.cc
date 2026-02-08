@@ -980,6 +980,11 @@ Json::Value Areas::toJson() const
     return ret;
 }
 
+std::string Areas::toString() const
+{
+    return toJson().toStyledString();
+}
+
 Json::Value Areas::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {

@@ -9,3 +9,24 @@ type Room struct {
 	Capacity    uint   `gorm:"column:capacity"`
 	AdminEmail  string `gorm:"column:admin_email"`
 }
+
+var roomNames = [...]string{
+	"",
+	"Seminar Room 1",
+	"Seminar Room 2",
+	"Alan Turing",
+	"Da Vinci",
+	"Isaac Newton",
+	"Marie Curie",
+	"Michael Faraday",
+	"Nikola Tesla",
+	"Thomas Edison",
+}
+
+func GetRoomNameFromID(r int) string {
+	if r < 1 || int(r) >= len(roomNames) {
+		return ""
+	}
+	// Simply return the string at the index
+	return roomNames[r]
+}

@@ -62,6 +62,6 @@ func HandleDeleteBooking(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "booking deleted successfully.",
+		"message": "Booking deleted successfully.",
 	})
 }

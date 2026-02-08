@@ -44,7 +44,7 @@ export function DatePickerInput({ date, setDate }: { date: Dayjs, setDate: React
             <InputGroup>
                 <InputGroupInput
                     id="date-required"
-                    className="text-xl font-semibold text-center text-sky-900 dark:text-sky-100"
+                    className="font-semibold text-center text-sky-900 dark:text-sky-100"
                     value={inputValue}
                     placeholder="06 July 2025"
                     onChange={(e) => setInputValue(e.target.value)}

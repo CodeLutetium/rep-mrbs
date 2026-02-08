@@ -2,6 +2,7 @@ package bookings
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -66,8 +67,11 @@ func HandleNewBooking(c *gin.Context) {
 		Description: newBookingReq.Description,
 	}
 
+	// Begin transaction to make sure other users cannot create new bookings in the meantime.
+	tx := db.GormDB.Begin()
+
 	// Check if booking clashes with existing booking.
-	numClashes, err := gorm.G[int](db.GormDB).Table("mrbs.bookings").Select("count(1)").Where("room_id = ? AND end_time > ? AND start_time < ?", parsedRoomID, newBooking.StartTime, newBooking.EndTime).Take(context.Background())
+	numClashes, err := gorm.G[int](tx).Table("mrbs.bookings").Select("count(1)").Where("room_id = ? AND end_time > ? AND start_time < ?", parsedRoomID, newBooking.StartTime, newBooking.EndTime).Take(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("Error encountered when checking for clashes")
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -78,6 +82,7 @@ func HandleNewBooking(c *gin.Context) {
 	log.Trace().Int("num clashes", numClashes).Msg("")
 	if numClashes > 0 {
 		log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
+		tx.Rollback()
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Booking conflicts with existing booking",
 		})
@@ -86,8 +91,9 @@ func HandleNewBooking(c *gin.Context) {
 
 	// No clash: insert booking into database.
 	result := gorm.WithResult()
-	err = gorm.G[models.Booking](db.GormDB, result).Create(context.Background(), &newBooking)
+	err = gorm.G[models.Booking](tx, result).Create(context.Background(), &newBooking)
 	if err != nil {
+		tx.Rollback()
 		log.Error().Err(err).Msg("Error creating booking")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Error creating booking, please try again later.",
@@ -95,9 +101,10 @@ func HandleNewBooking(c *gin.Context) {
 		return
 	}
 	log.Debug().Int64("rows affected", result.RowsAffected).Msg("booking inserted into database")
+	tx.Commit()
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":    "Booking success, room has been booked.",
+		"message":    fmt.Sprintf("Booking success, %v has been booked from %v to %v.", models.GetRoomNameFromID(int(newBooking.RoomID)), newBooking.StartTime.Format(models.DateTimeFormat), newBooking.EndTime.Format(models.DateTimeFormat)),
 		"booking_id": newBooking.BookingID,
 	})
 }
