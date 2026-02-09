@@ -55,7 +55,7 @@ export default function Home() {
                 <Dialog>
                     <DialogTrigger render={<Button variant={"outline"} className={"cursor-pointer"}>Map</Button>}></DialogTrigger>
                     <DialogContent className={"bg-white"}>
-                        <img src="nhrpr.png" className="mt-8" />
+                        <img src="/nhrpr.png" className="mt-8" />
                     </DialogContent>
                 </Dialog>
                 {/* <h1 className="text-xl font-semibold text-center text-sky-900 dark:text-sky-100 "> */}
