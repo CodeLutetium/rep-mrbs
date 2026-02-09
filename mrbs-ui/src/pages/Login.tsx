@@ -29,6 +29,9 @@ export default function Login() {
                     Meeting Room Booking System
                 </div>
                 <LoginForm redirect={redirect} />
+                <div className="text-muted-foreground text-xs text-center">
+                    Version 1.0
+                </div>
             </div>
         </div>
     )

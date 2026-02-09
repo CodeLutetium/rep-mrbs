@@ -7,10 +7,34 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 import { useSearchParams } from "react-router-dom";
 
 export default function Home() {
+    // Returns the current business day
+    const getInitialDate = () => {
+        // Priority: If user put ?date=... in URL, respect it.
+        const paramDate = searchParams.get("date");
+        if (paramDate) return dayjs(paramDate);
+
+        // Logic: If it is before 2:00 AM, treat it as yesterday
+        const now = dayjs();
+        if (now.hour() < 2) {
+            return now.subtract(1, 'day');
+        }
+
+        return now;
+    };
+
+
     const [searchParams] = useSearchParams();
-    const selectedDate = searchParams.get("date") || dayjs().format("YYYY-MM-DD");
+    const selectedDate = getInitialDate();
     const [currDate, setCurrDate] = useState<Dayjs>(dayjs(selectedDate));
 
+    const handleTodayClick = () => {
+        const now = dayjs();
+        if (now.hour() < 2) {
+            setCurrDate(now.subtract(1, 'day'));
+        } else {
+            setCurrDate(now);
+        }
+    }
 
     return (
         <div className="w-full h-full flex flex-col space-y-4">
@@ -19,7 +43,7 @@ export default function Home() {
                     <Button variant={"outline"} size={"icon"} className="cursor-pointer" onClick={() => (setCurrDate(currDate.subtract(1, 'day')))}>
                         <ArrowLeft />
                     </Button>
-                    <Button onClick={() => (setCurrDate(dayjs()))}>
+                    <Button onClick={() => handleTodayClick()}>
                         Today
                     </Button>
                     <Button variant={"outline"} size={"icon"} className={"cursor-pointer"} onClick={() => (setCurrDate(currDate.add(1, 'day')))}>
