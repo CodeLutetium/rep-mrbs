@@ -5,6 +5,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { useSearchParams } from "react-router-dom";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 export default function Home() {
     // Returns the current business day
@@ -51,6 +52,12 @@ export default function Home() {
                     </Button>
                 </div>
                 <DatePickerInput date={currDate} setDate={setCurrDate} />
+                <Dialog>
+                    <DialogTrigger render={<Button variant={"outline"} className={"cursor-pointer"}>Map</Button>}></DialogTrigger>
+                    <DialogContent className={"bg-white"}>
+                        <img src="nhrpr.png" className="mt-8" />
+                    </DialogContent>
+                </Dialog>
                 {/* <h1 className="text-xl font-semibold text-center text-sky-900 dark:text-sky-100 "> */}
                 {/* </h1> */}
             </div>
