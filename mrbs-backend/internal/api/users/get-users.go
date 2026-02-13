@@ -18,12 +18,9 @@ func HandleGetAllUsers(c *gin.Context) {
 		log.Error().Err(err).Msg("Error fetching users from database")
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Error fetching users from database",
-			"users": "",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"users": users,
-	})
+	c.JSON(http.StatusOK, users)
 }

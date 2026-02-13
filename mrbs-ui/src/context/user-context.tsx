@@ -16,25 +16,25 @@ type UserContextType = {
 const UserContext = createContext<UserContextType | null>(null);
 
 export const UserProvider: FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User | null>(() => {
+        if (typeof window === "undefined")
+            return null;
 
-    useEffect(() => {
-        const username = typeof window !== "undefined" ? localStorage.getItem("username") : null;
-        const display_name = typeof window !== undefined ? localStorage.getItem("display_name") : null;
-        const email = typeof window !== undefined ? localStorage.getItem("email") : null;
-        const level = typeof window !== undefined ? localStorage.getItem("level") : null;
+        const username = localStorage.getItem("username");
+        const display_name = localStorage.getItem("display_name");
+        const email = localStorage.getItem("email");
+        const level = localStorage.getItem("level");
 
-        if (username && display_name && email) {
-            const currUser: User = {
+        if (username && display_name && email && level) {
+            return {
                 name: username,
                 display_name: display_name,
                 email: email,
                 level: Number(level),
-            }
-            setUser(currUser)
+            };
         }
-    }, [])
-
+        return null;
+    });
 
     return (
         <UserContext.Provider value={{ user, setUser }}>

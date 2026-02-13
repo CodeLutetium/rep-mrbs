@@ -8,7 +8,7 @@ import {
 import { useUser } from "@/context/user-context"
 import { Link, } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark } from "lucide-react";
+import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck } from "lucide-react";
 
 export default function Navbar() {
     const user = useUser();
@@ -45,6 +45,16 @@ export default function Navbar() {
                                                 Change password
                                             </Link>
                                         </DropdownMenuItem>
+                                        {
+                                            user.level > 1 &&
+                                            <DropdownMenuItem asChild>
+                                                <Link className="cursor-pointer" to={"/admin"}>
+                                                    <ShieldCheck />
+                                                    Admin panel
+                                                </Link>
+                                            </DropdownMenuItem>
+
+                                        }
                                         <DropdownMenuItem asChild>
                                             <Link className="cursor-pointer" to={"/help"}>
                                                 <CircleQuestionMark />
