@@ -1,16 +1,7 @@
 import { useEffect, useState } from "react"
-import { Plus, Search, MoreHorizontal } from "lucide-react"
+import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
 import {
     Card,
     CardContent,
@@ -22,15 +13,6 @@ import {
     Dialog,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { useNavigate } from "react-router-dom"
 import AddUsersForm from "@/components/admin/add-users-form"
 import type { UserData } from "@/models/user"
