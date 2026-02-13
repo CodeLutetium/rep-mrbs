@@ -30,7 +30,7 @@ export default function Login() {
                 </div>
                 <LoginForm redirect={redirect} />
                 <div className="text-muted-foreground text-xs text-center">
-                    Version 1.0
+                    Version 1.1
                 </div>
             </div>
         </div>

@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { useAdmin } from "@/context/admin-context"
 import { DataTable } from "../data-table.tsx"
 import { userColumns } from "./user-columns"
+import { Input } from "../ui/input.tsx"
 
 
 export default function UserDashboard() {
@@ -28,6 +29,7 @@ export default function UserDashboard() {
     const navigate = useNavigate();
 
     const [users, setUsers] = useState<UserData[]>([])
+    const [globalFilter, setGlobalFilter] = useState<string>("");
     // Dialog controls
     const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
@@ -74,7 +76,19 @@ export default function UserDashboard() {
             </CardHeader>
 
             <CardContent>
-                <DataTable columns={userColumns} data={users} />
+                <div className="flex items-center py-4">
+                    <Input
+                        placeholder="Search by username/name/role"
+                        value={globalFilter}
+                        onChange={(e) =>
+                            setGlobalFilter(e.target.value)
+                        }
+                        className="max-w-sm"
+                    />
+                </div>
+
+
+                <DataTable columns={userColumns} data={users} search={globalFilter} />
 
             </CardContent>
         </Card >

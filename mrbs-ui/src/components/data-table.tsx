@@ -2,7 +2,10 @@ import {
     type ColumnDef,
     flexRender,
     getCoreRowModel,
+    getFilteredRowModel,
     getPaginationRowModel,
+    getSortedRowModel,
+    type SortingState,
     useReactTable,
 } from "@tanstack/react-table"
 
@@ -15,25 +18,39 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Button } from "./ui/button"
+import { useState } from "react"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
     data: TData[]
+    search?: string
 }
 
 export function DataTable<TData, TValue>({
     columns,
     data,
+    search,
 }: DataTableProps<TData, TValue>) {
+    const [sorting, setSorting] = useState<SortingState>([])
+
+
     const table = useReactTable({
         data,
         columns,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        onSortingChange: setSorting,
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        state: {
+            sorting,
+            globalFilter: search,
+        }
     })
 
     return (
         <div>
+
             <div className="overflow-hidden rounded-md border">
                 <Table>
                     <TableHeader>
