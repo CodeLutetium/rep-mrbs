@@ -19,20 +19,6 @@ export interface Room {
 
 export const Rooms: Array<Room> = [
     {
-        room_id: "1",
-        area_id: "2",
-        display_name: "Seminar Room 1",
-        description: "",
-        capacity: "50",
-    },
-    {
-        room_id: "2",
-        area_id: "2",
-        display_name: "Seminar Room 2",
-        description: "",
-        capacity: "50",
-    },
-    {
         room_id: "3",
         area_id: "2",
         display_name: "Alan Turing",
@@ -81,5 +67,20 @@ export const Rooms: Array<Room> = [
         description: "",
         capacity: "6",
     },
+    {
+        room_id: "1",
+        area_id: "2",
+        display_name: "Seminar Room 1",
+        description: "",
+        capacity: "50",
+    },
+    {
+        room_id: "2",
+        area_id: "2",
+        display_name: "Seminar Room 2",
+        description: "",
+        capacity: "50",
+    },
+
 ];
 
