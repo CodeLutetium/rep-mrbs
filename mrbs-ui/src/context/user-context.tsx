@@ -2,7 +2,6 @@ import { type User } from "@/models/user";
 import {
     createContext,
     useContext,
-    useEffect,
     useState,
     type FC,
     type ReactNode,

@@ -5,9 +5,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "./ui/label"
-import { Textarea } from "./ui/textarea"
-import { Button } from "./ui/button"
+import { Label } from "../ui/label"
+import { Textarea } from "../ui/textarea"
+import { Button } from "../ui/button"
 import { useState } from "react"
 import { insertUsers } from "@/services/user-service"
 import { toast } from "sonner"
