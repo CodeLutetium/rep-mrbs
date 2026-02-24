@@ -72,9 +72,9 @@ export default function Navbar() {
                             </DropdownMenu>
                         </div>
                         ) :
-                            <NavigationMenuItem >
-                                <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/"}>Home</Link>} />
-                                <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/help"}>Help</Link>} />
+                            <NavigationMenuItem className={"flex flex-row"} >
+                                <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/"}>Home</Link>} />
+                                <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/help"}>Help</Link>} />
                                 <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/login"}>Login</Link>} />
                             </NavigationMenuItem>
 

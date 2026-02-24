@@ -3,7 +3,7 @@ import { DatePickerInput } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import dayjs, { Dayjs } from 'dayjs';
 import { useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, Map } from "lucide-react"
 import { useSearchParams } from "react-router-dom";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
@@ -39,8 +39,8 @@ export default function Home() {
 
     return (
         <div className="w-full h-full flex flex-col space-y-4">
-            <div className="flex flex-col-reverse sm:flex-row gap-2 items-center justify-between">
-                <div className="flex flex-row items-center gap-2">
+            <div className="flex flex-row gap-2 items-center justify-between">
+                <div className="flex flex-row items-center gap-1">
                     <Button variant={"outline"} size={"icon"} className="cursor-pointer" onClick={() => (setCurrDate(currDate.subtract(1, 'day')))}>
                         <ArrowLeft />
                     </Button>
@@ -53,7 +53,12 @@ export default function Home() {
                 </div>
                 <DatePickerInput date={currDate} setDate={setCurrDate} />
                 <Dialog>
-                    <DialogTrigger render={<Button variant={"outline"} className={"cursor-pointer"}>Map</Button>}></DialogTrigger>
+                    <DialogTrigger render={
+                        <>
+                            {/* <Button variant={"outline"} size={"icon"} ><Map /></Button> */}
+                            <Button variant={"outline"} className={"cursor-pointer"}><Map /><span className="hidden sm:block">Map</span></Button>
+                        </>
+                    }></DialogTrigger>
                     <DialogContent className={"bg-white"}>
                         <img src="/nhrpr.png" className="mt-8" />
                     </DialogContent>

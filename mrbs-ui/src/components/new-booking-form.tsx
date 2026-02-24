@@ -142,7 +142,7 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                                     name={field.name}
                                 >
                                     <SelectTrigger>
-                                        <SelectValue render={<div>{Rooms[Number(field.value) - 1].display_name}</div>} />
+                                        <SelectValue render={<div>{Rooms.find((room) => room.room_id == field.value)?.display_name}</div>} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {Rooms.map((room) => <SelectItem value={room.room_id}>{room.display_name}</SelectItem>)}

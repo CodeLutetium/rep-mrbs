@@ -1,5 +1,4 @@
 
-import * as React from "react"
 import { Calendar } from "@/components/ui/calendar"
 import { Field, } from "@/components/ui/field"
 import {
@@ -16,14 +15,37 @@ import {
 import { CalendarIcon } from "lucide-react"
 import type { Dayjs } from "dayjs"
 import dayjs from "dayjs"
+import { useState, useEffect } from "react"
+
+// Helper hook to track screen size matching Tailwind's breakpoints
+function useMediaQuery(query: string) {
+    const [matches, setMatches] = useState(false)
+
+    useEffect(() => {
+        const media = window.matchMedia(query)
+        // Set initial value
+        setMatches(media.matches)
+
+        // Listen for resize events
+        const listener = (e: MediaQueryListEvent) => setMatches(e.matches)
+        media.addEventListener("change", listener)
+
+        return () => media.removeEventListener("change", listener)
+    }, [query])
+
+    return matches
+}
+
 
 export function DatePickerInput({ date, setDate }: { date: Dayjs, setDate: React.Dispatch<React.SetStateAction<Dayjs>> }) {
-    const [open, setOpen] = React.useState(false)
-    const [month, setMonth] = React.useState<Date | undefined>(date.toDate())
-    const [inputValue, setInputValue] = React.useState(date.format("DD MMMM YYYY")) // temp value to store inputs
+    const [open, setOpen] = useState(false)
+    const [month, setMonth] = useState<Date | undefined>(date.toDate())
+    const [inputValue, setInputValue] = useState(date.format("DD MMM YY")) // temp value to store inputs
+    const isLargeScreen = useMediaQuery("(min-width: 640px)")
+    const dateFormat = isLargeScreen ? "DD MMMM YYYY" : "DD MMM YY"
 
-    React.useEffect(() => {
-        setInputValue(date.format("DD MMMM YYYY"))
+    useEffect(() => {
+        setInputValue(date.format("DD MMM YY"))
         setMonth(date.toDate());
     }, [date])
 
@@ -32,21 +54,27 @@ export function DatePickerInput({ date, setDate }: { date: Dayjs, setDate: React
         if (parsed.isValid()) {
             setDate(parsed)
             setMonth(parsed.toDate())
-            setInputValue(parsed.format("DD MMMM YYYY")) // Format nicely
+            setInputValue(parsed.format(dateFormat)) // Format nicely
         } else {
             // Revert to last valid date if input is garbage
-            setInputValue(date.format("DD MMMM YYYY"))
+            setInputValue(date.format(dateFormat))
         }
     }
 
+
+    useEffect(() => {
+        setInputValue(date.format(dateFormat))
+        setMonth(date.toDate());
+    }, [date, dateFormat])
+
     return (
-        <Field className="mx-auto w-48">
+        <Field className="mx-auto w-32 sm:w-48">
             <InputGroup>
                 <InputGroupInput
                     id="date-required"
                     className="font-semibold text-center text-sky-900 dark:text-sky-100"
                     value={inputValue}
-                    placeholder="06 July 2025"
+                    placeholder="06 Jul 2025"
                     onChange={(e) => setInputValue(e.target.value)}
                     onBlur={handleCommit}
                     onKeyDown={(e) => {
