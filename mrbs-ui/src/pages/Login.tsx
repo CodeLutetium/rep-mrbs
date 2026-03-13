@@ -30,7 +30,7 @@ export default function Login() {
                 </div>
                 <LoginForm redirect={redirect} />
                 <div className="text-muted-foreground text-xs text-center">
-                    Version 1.2
+                    Version {import.meta.env.VITE_APP_VERSION}
                 </div>
             </div>
         </div>

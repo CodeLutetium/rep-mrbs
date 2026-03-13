@@ -50,3 +50,8 @@ export async function changePassword(data: ChangePasswordValues): Promise<AxiosR
 export async function resetPassword(email: string): Promise<AxiosResponse> {
     return await axiosInstance.post("/auth/reset-password", { email: email }, { headers: { "Content-Type": "multipart/form-data" }, validateStatus: (status) => status < 501 })
 }
+
+// Ensures current user cookie is valid 
+export async function getCurrentUser(): Promise<LoginResponse> {
+    return await axiosInstance.get("/auth/me", { validateStatus: (status) => status < 501 })
+}

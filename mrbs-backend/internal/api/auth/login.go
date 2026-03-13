@@ -2,13 +2,8 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"net/http"
-	"os"
-	"strconv"
 	"strings"
-	"time"
 
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
@@ -26,7 +21,7 @@ type LoginForm struct {
 }
 
 type LoginResponse struct {
-	Sucess      bool   `json:"success"`
+	Success     bool   `json:"success"`
 	Error       string `json:"error"`
 	Username    string `json:"username"`
 	DisplayName string `json:"display_name"`
@@ -60,16 +55,16 @@ func HandleLogin(c *gin.Context) {
 	if err == gorm.ErrRecordNotFound {
 		log.Warn().Err(err).Msg("username not found")
 		c.JSON(http.StatusOK, LoginResponse{
-			Sucess: false,
-			Error:  "Invalid username/password",
+			Success: false,
+			Error:   "Invalid username/password",
 		})
 		return
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("Error fetching user")
 		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Sucess: false,
-			Error:  defaultInternalErrorMsg,
+			Success: false,
+			Error:   defaultInternalErrorMsg,
 		})
 		return
 	}
@@ -79,8 +74,8 @@ func HandleLogin(c *gin.Context) {
 	if err != nil {
 		log.Error().Err(err).Msg("Error when comparing password with hash")
 		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Sucess: false,
-			Error:  defaultInternalErrorMsg,
+			Success: false,
+			Error:   defaultInternalErrorMsg,
 		})
 		return
 	}
@@ -88,93 +83,21 @@ func HandleLogin(c *gin.Context) {
 	if !isMatch {
 		log.Info().Msgf("Login attempt for %s failed", form.Username)
 		c.JSON(http.StatusOK, LoginResponse{
-			Sucess: false,
-			Error:  "Invalid username/password",
+			Success: false,
+			Error:   "Invalid username/password",
 		})
 		return
 	}
 
-	// No problem: Generate session key
-	// 1. Do not delete session keys matching UID - user may log in from both mobile and desktop at the same time
-	// 2. Housekeeping: delete session keys older than expiry set in config/.env when we generate a new session key
-	sessionKeyLifetime, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Sucess: false,
-			Error:  err.Error(),
-		})
-		return
-	}
-
-	_, err = gorm.G[models.Session](db).Where("time_created < now() - (? * interval '1 second')", sessionKeyLifetime).Delete(context.Background())
-	if err != nil {
-		log.Warn().Err(err).Msg("Error deleting old session keys")
-	}
-
-	sessionKey, err := generateSessionKey()
-	if err != nil {
-		log.Error().Err(err).Msg("Error generating session key, returning 500 as sesison key cannot be empty.")
-		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Sucess: false,
-			Error:  defaultInternalErrorMsg,
-		})
-		return
-	}
-
-	// Update last login async.
-	go func() {
-		user.LastLogin = time.Now()
-		db.Save(&user)
-
-		log.Debug().Msgf("Last login updated for user %s", user.Name)
-	}()
-
-	result := gorm.WithResult()
-	err = gorm.G[models.Session](db, result).Create(context.Background(), &models.Session{
-		SessionKey:  sessionKey,
-		UserID:      user.UserID,
-		TimeCreated: time.Now(),
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("Error creating new session")
-		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Sucess: false,
-			Error:  defaultInternalErrorMsg,
-		})
-		return
-	}
-	log.Info().Int64("num rows inserted", result.RowsAffected).Msg("New session created")
-
-	c.SetCookieData(&http.Cookie{
-		Name:     "session",
-		Value:    sessionKey,
-		MaxAge:   7 * 24 * 60 * 60,
-		Path:     "/",
-		Secure:   true,
-		SameSite: http.SameSiteDefaultMode,
-		HttpOnly: true,
-	})
+	// Generate new session key and attach it to cookie
+	UpdateSession(&user, c)
 
 	// c.SetCookie("session", sessionKey, 604800, "/", "localhost", true, true)
 	c.JSON(http.StatusOK, LoginResponse{
-		Sucess:      true,
+		Success:     true,
 		Username:    user.Name,
 		DisplayName: user.DisplayName,
 		Email:       user.Email,
 		Level:       user.Level,
 	})
-}
-
-func generateSessionKey() (string, error) {
-	const SessionKeyLen = 32
-
-	id := make([]byte, SessionKeyLen)
-	_, err := rand.Read(id)
-	if err != nil {
-		log.Error().Err(err).Msg("Error encountered generating session key")
-		return "", err
-	}
-
-	return base64.RawURLEncoding.EncodeToString(id), nil
 }

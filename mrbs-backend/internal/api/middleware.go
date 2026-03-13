@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
@@ -37,7 +40,31 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msg("Session not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "login session has expired",
+				"message": "login session not found",
+			})
+			c.Abort()
+			return
+		}
+
+		// Check if session key is valid
+		maxSessionSeconds, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
+		if err != nil {
+			log.Error().Err(err).Msg("Error parsing SESSION_KEY_LIFETIME")
+
+			// Fallback to default
+			maxSessionSeconds = 7 * 24 * 60 * 60
+		}
+		expirationTime := sessionObj.TimeCreated.Add(time.Duration(maxSessionSeconds) * time.Second)
+		if time.Now().After(expirationTime) {
+			log.Warn().Msg("Session has expired")
+
+			rowsDeleted, err := gorm.G[models.Session](db.GormDB).Where("session_id = ?", sessionObj.SessionKey).Delete(context.Background())
+			if err != nil {
+				log.Error().Err(err).Msg("Error deleting expired session")
+			}
+			log.Info().Int("rowsDeleted", rowsDeleted).Msg("Expired session deleted from database")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": "Login session has expired, please login again",
 			})
 			c.Abort()
 			return

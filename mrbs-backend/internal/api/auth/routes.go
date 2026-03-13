@@ -12,4 +12,5 @@ func RegisterAuthRoutes(router *gin.RouterGroup) {
 	router.POST("/logout", api.AuthGuard(1), HandleLogout)
 	router.POST("/change-password", api.AuthGuard(1), HandleChangePassword)
 	router.POST("/reset-password", HandleResetPassword)
+	router.GET("/me", HandleGetCurrentUser)
 }
