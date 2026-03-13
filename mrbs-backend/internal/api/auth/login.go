@@ -90,7 +90,7 @@ func HandleLogin(c *gin.Context) {
 	}
 
 	// Generate new session key and attach it to cookie
-	UpdateSession(&user, c)
+	NewSession(&user, c)
 
 	// c.SetCookie("session", sessionKey, 604800, "/", "localhost", true, true)
 	c.JSON(http.StatusOK, LoginResponse{

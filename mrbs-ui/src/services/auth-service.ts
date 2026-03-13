@@ -54,4 +54,9 @@ export async function resetPassword(email: string): Promise<AxiosResponse> {
 // Ensures current user cookie is valid 
 export async function getCurrentUser(): Promise<LoginResponse> {
     return await axiosInstance.get("/auth/me", { validateStatus: (status) => status < 501 })
+        .then(async (res) => res.data)
+        .catch((err) => {
+            console.error(err);
+            Promise.reject()
+        })
 }

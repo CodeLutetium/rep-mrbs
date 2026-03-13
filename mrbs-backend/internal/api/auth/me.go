@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"rep-mrbs/internal/db"
@@ -16,11 +14,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// Threshold before we rotate the session key.
+const rotationThreshold = 24 * time.Hour
+
 func HandleGetCurrentUser(c *gin.Context) {
 	session, err := c.Cookie("session")
 	// Session does not exist
 	if err != nil {
 		deleteSessionCookie(c)
+		log.Trace().Msg("Session does not exist, cookie deleted.")
 
 		c.JSON(http.StatusOK, LoginResponse{
 			Success: false,
@@ -28,23 +30,8 @@ func HandleGetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	// Note: Never delete session keys by UID - the user may be logged in from both mobile and desktop with different session keys assigned.
-	sessionKeyLifetime, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Success: false,
-			Error:   err.Error(),
-		})
-		return
-	}
-
 	// Delete expired session keys
-	_, err = gorm.G[models.Session](db.GormDB).Where("time_created < now() - (? * interval '1 second')", sessionKeyLifetime).Delete(context.Background())
-	if err != nil {
-		log.Warn().Err(err).Msg("Error deleting old session keys")
-	}
-	log.Trace().Msg("Expired session keys deleted from database")
+	DeleteExpiredSessions()
 
 	// Retrieve session key from db
 	// If session key does not exist, it could be an invalid session key or an expired session key.
@@ -52,6 +39,10 @@ func HandleGetCurrentUser(c *gin.Context) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		log.Warn().Msg("Session not found")
 		deleteSessionCookie(c)
+
+		// Do not return 401
+		// /auth/me only retrieve the user profile if the user is logged in
+		// If the session has expired, we simply handle cookie management here.
 		c.JSON(http.StatusOK, LoginResponse{
 			Success: false,
 		})
@@ -68,7 +59,12 @@ func HandleGetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	UpdateSession(&user, c)
+	if time.Since(sessionObj.TimeCreated) > rotationThreshold {
+		log.Debug().Msg("Session stale, rotating key")
+
+		RotateSession(&user, c, sessionObj.SessionKey)
+	}
+
 	c.JSON(http.StatusOK, LoginResponse{
 		Success:     true,
 		Username:    user.Name,

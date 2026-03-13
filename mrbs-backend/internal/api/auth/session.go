@@ -17,29 +17,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// UpdateSession helper function to manage sessions in application.
-// If existing session exists in the database, the old session is removed
-// A new session key is generated for the current user and attached to the current gin context
-func UpdateSession(user *models.User, c *gin.Context) {
-	// Note: Never delete session keys by UID - the user may be logged in from both mobile and desktop with different session keys assigned.
-	sessionKeyLifetime, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		c.JSON(http.StatusInternalServerError, LoginResponse{
-			Success: false,
-			Error:   err.Error(),
-		})
-		return
-	}
+var sessionKeyLifetime int
 
-	// 1. Do not delete session keys matching UID - user may log in from both mobile and desktop at the same time
-	// 2. Housekeeping: delete session keys older than expiry set in config/.env when we generate a new session key
-	// Performing lazy deletion will be more ideal performance wise, but since this is a small application the gains will be minimal.
-	_, err = gorm.G[models.Session](db.GormDB).Where("time_created < now() - (? * interval '1 second')", sessionKeyLifetime).Delete(context.Background())
+func init() {
+	lifetime, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
 	if err != nil {
-		log.Warn().Err(err).Msg("Error deleting old session keys")
+		// Use fallback value of 1 week
+		sessionKeyLifetime = 7 * 24 * 60 * 60
+		log.Warn().Msg("SESSION_KEY_LIFETIME not set in /config/.env, default value of 7 days is used.")
+	} else {
+		sessionKeyLifetime = lifetime
 	}
-	log.Trace().Msg("Expired session keys deleted from database")
+}
+
+func NewSession(user *models.User, c *gin.Context) {
+	DeleteExpiredSessions()
 
 	sessionKey, err := generateSessionKey()
 	if err != nil {
@@ -83,6 +75,54 @@ func UpdateSession(user *models.User, c *gin.Context) {
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 		HttpOnly: true,
+	})
+}
+
+// DeleteExpiredSessions remove expired sessions from the database
+func DeleteExpiredSessions() {
+	// 1. Do not delete session keys matching UID - user may log in from both mobile and desktop at the same time
+	// 2. Housekeeping: delete session keys older than expiry set in config/.env when we generate a new session key
+	// Performing lazy deletion will be more ideal performance wise, but since this is a small application the gains will be minimal.
+	numDeleted, err := gorm.G[models.Session](db.GormDB).Where("time_created < now() - (? * interval '1 second')", sessionKeyLifetime).Delete(context.Background())
+	if err != nil {
+		log.Warn().Err(err).Msg("Error deleting old session keys")
+	}
+	log.Trace().Int("numDeleted", numDeleted).Msg("Expired session keys deleted from database")
+}
+
+func RotateSession(user *models.User, c *gin.Context, oldKey string) {
+	newKey, _ := generateSessionKey()
+
+	err := db.GormDB.Transaction(func(tx *gorm.DB) error {
+		// Delete old session
+		if err := tx.Table("mrbs.sessions").Where("session_key = ?", oldKey).Delete(&models.Session{}).Error; err != nil {
+			return err
+		}
+
+		// 2. Create new session
+		newSession := models.Session{
+			SessionKey:  newKey,
+			UserID:      user.UserID,
+			TimeCreated: time.Now(),
+		}
+		if err := tx.Create(&newSession).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to rotate session")
+		return
+	}
+
+	c.SetCookieData(&http.Cookie{
+		Name:     "session",
+		Value:    newKey,
+		MaxAge:   sessionKeyLifetime,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 	})
 }
 

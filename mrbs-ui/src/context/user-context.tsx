@@ -73,3 +73,12 @@ export const useSetUser = () => {
   }
   return context.setUser;
 }
+
+// Hook to check if auth is still being verified
+export const useAuthLoading = () => {
+  const context = useContext(UserContext);
+  if (!context) {
+    throw new Error("useAuthLoading must be used within a UserProvider");
+  }
+  return context.loading;
+};

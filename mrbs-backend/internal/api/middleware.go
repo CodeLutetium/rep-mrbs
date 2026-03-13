@@ -51,7 +51,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if err != nil {
 			log.Error().Err(err).Msg("Error parsing SESSION_KEY_LIFETIME")
 
-			// Fallback to default
+			// Fallback to default (7 days)
 			maxSessionSeconds = 7 * 24 * 60 * 60
 		}
 		expirationTime := sessionObj.TimeCreated.Add(time.Duration(maxSessionSeconds) * time.Second)
