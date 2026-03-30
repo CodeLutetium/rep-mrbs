@@ -19,7 +19,7 @@ func HandleLogout(c *gin.Context) {
 
 	log.Info().Msgf("Logging out user with userID %v", userID)
 
-	sessionID, err := c.Cookie("sesison")
+	sessionID, err := c.Cookie("session")
 	if err != nil {
 		log.Warn().Msg("Session cookie not found in logout request")
 		c.JSON(http.StatusOK, gin.H{
@@ -31,7 +31,7 @@ func HandleLogout(c *gin.Context) {
 	// Delete session from DB async
 	go func() {
 		result := gorm.WithResult()
-		_, err = gorm.G[models.Session](db.GormDB, result).Where("session_id = ?", sessionID).Delete(context.Background())
+		_, err = gorm.G[models.Session](db.GormDB, result).Where("session_key = ?", sessionID).Delete(context.Background())
 		log.Info().Int64("Rows deleted", result.RowsAffected).Msg("Session key removed from database")
 	}()
 
@@ -42,7 +42,7 @@ func HandleLogout(c *gin.Context) {
 		MaxAge:   -1,
 		Expires:  time.Now().Add(-1 * time.Hour),
 		HttpOnly: true,
-		SameSite: http.SameSiteDefaultMode,
+		SameSite: http.SameSiteStrictMode,
 		Secure:   true,
 	})
 

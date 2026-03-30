@@ -16,3 +16,11 @@ export interface UserData {
     time_created: string;
     last_login: string;
 }
+
+export const UserRoleLevel = {
+    Default: 1,
+    Admin: 2,
+} as const;
+
+export type UserLevelType = (typeof UserRoleLevel)[keyof typeof UserRoleLevel]
+

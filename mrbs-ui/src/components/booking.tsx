@@ -21,6 +21,9 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CalendarIcon } from "lucide-react"
 import { Calendar } from "./ui/calendar";
+import { UserRoleLevel } from "@/models/user";
+import { TOTAL_BOOKING_SLOTS } from "./new-booking-form";
+import { useBookingDuration } from "@/hooks/use-booking-durations";
 
 export const editBookingSchema = z.object({
   title: z.string().min(1, "Title cannot be empty!").max(25),
@@ -36,11 +39,19 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
 
 
   // For changing the start time
-  const dayStartTime = useMemo(() => dayjs(booking.start_time).hour(8).minute(0).second(0), [booking.start_time]);
-  const TOTAL_SLOTS = 36;
+  const dayStartTime = useMemo(() => {
+    let startTime = dayjs(booking.start_time).hour(8).minute(0).second(0);
+
+    // Correct to previous day if booking is between 12am and 2am 
+    if (dayjs(booking.start_time).hour() >= 0 && dayjs(booking.start_time).hour() < 3) {
+      startTime = startTime.subtract(1, 'day');
+    }
+
+    return startTime;
+  }, [booking.start_time]);
   // Generate valid start times
   const TIME_SLOTS: Array<Dayjs> = useMemo(() =>
-    Array.from({ length: TOTAL_SLOTS }, (_, i) => dayStartTime.add(i * 30, "minute")),
+    Array.from({ length: TOTAL_BOOKING_SLOTS }, (_, i) => dayStartTime.add(i * 30, "minute")),
     [dayStartTime]);
 
   const form = useForm<z.infer<typeof editBookingSchema>>({
@@ -76,31 +87,18 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
   const watchedStartTime = form.watch("start_time")
   const watchedDuration = form.watch("duration")
 
-  const baseDurationOptions = [1, 2, 3, 4, 5, 6];
-  // Generate durations before 2am.
-  const availableDurations = useMemo(() => {
-    if (!watchedStartTime) return baseDurationOptions;
+  const durationOptions = useBookingDuration(watchedStartTime, dayStartTime, user?.level)
 
-    const diffInMinutes = watchedStartTime.diff(dayStartTime, 'minute');
-    const currentSlotIndex = Math.floor(diffInMinutes / 30);
-
-    // Slots remaining until 2:00 AM
-    const slotsRemaining = TOTAL_SLOTS - currentSlotIndex;
-
-    // Filter options that would exceed 2:00 AM
-    return baseDurationOptions.filter(d => d <= slotsRemaining);
-  }, [watchedStartTime, dayStartTime]);
-
-  // Safety Clamp
-  // If user selected "3 hours" at 8:00 PM, then moved time to 1:30 AM, 
-  // "3 hours" is now invalid. We must force-reduce it.
+  // Safety clamp to ensure that duration cannot exceed maximum allowed.
   useEffect(() => {
-    if (availableDurations.length === 0) return;
-    const maxDuration = Math.max(...availableDurations);
-    if (watchedDuration > maxDuration) {
-      form.setValue("duration", maxDuration);
+    if (durationOptions.length === 0)
+      return;
+
+    const maxAvailable = Math.max(...durationOptions);
+    if (watchedDuration > maxAvailable) {
+      form.setValue("duration", maxAvailable);
     }
-  }, [watchedStartTime, availableDurations, watchedDuration, form]);
+  }, [watchedStartTime, durationOptions, watchedDuration, form])
 
 
   const onSubmit = async (values: z.infer<typeof editBookingSchema>) => {
@@ -155,7 +153,7 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
                       name={field.name}
                     >
                       <SelectTrigger className={"col-span-2"}>
-                        <SelectValue render={<div>{Rooms[Number(field.value) - 1].display_name}</div>} />
+                        <SelectValue render={<div>{Rooms.find((room) => room.room_id == field.value)?.display_name}</div>} />
                       </SelectTrigger>
                       <SelectContent>
                         {Rooms.map((room) => <SelectItem value={room.room_id}>{room.display_name}</SelectItem>)}
@@ -298,7 +296,7 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
                         <SelectValue render={<div>{watchedStartTime.add(watchedDuration * 30, 'minutes').format("hh:mm A")}</div>} />
                       </SelectTrigger>
                       <SelectContent >
-                        {availableDurations.map((duration) => (
+                        {durationOptions.map((duration) => (
                           <SelectItem key={duration} value={duration}>
                             {watchedStartTime.add(duration * 30, 'minutes').format("hh:mm A")}
                             <span className="ml-2 text-muted-foreground">
@@ -311,7 +309,8 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
                   )
                 }
                 }
-              />) : (
+              />
+            ) : (
               <Input className="col-span-2" value={dayjs(booking.start_time).format("hh:mm A")} disabled />
             )}
           </Field>
@@ -319,7 +318,7 @@ export default function BookingDialog({ booking, onDelete, onUpdate }: { booking
         </FieldGroup>
 
         <DialogFooter className="flex flex-row justify-between sm:justify-between items-center w-full">
-          {isBookingOwner &&
+          {(isBookingOwner || user?.level === UserRoleLevel.Admin) &&
             <AlertDialog>
               <AlertDialogTrigger className={"place-self-end"}>
                 <Button variant={"outline"} size={"icon"} className={"cursor-pointer "} title="Delete booking">

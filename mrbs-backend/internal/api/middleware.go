@@ -58,7 +58,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if time.Now().After(expirationTime) {
 			log.Warn().Msg("Session has expired")
 
-			rowsDeleted, err := gorm.G[models.Session](db.GormDB).Where("session_id = ?", sessionObj.SessionKey).Delete(context.Background())
+			rowsDeleted, err := gorm.G[models.Session](db.GormDB).Where("session_key = ?", sessionObj.SessionKey).Delete(context.Background())
 			if err != nil {
 				log.Error().Err(err).Msg("Error deleting expired session")
 			}
