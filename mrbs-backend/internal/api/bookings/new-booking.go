@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"rep-mrbs/internal/api"
+	"rep-mrbs/internal/constants"
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
 
@@ -25,9 +26,20 @@ type NewBookingRequest struct {
 	Description string `json:"description"` // can be empty
 }
 
+// Clash - used to personalize the type of error message to return for any possible room booking conflicts
+type Clash struct {
+	RoomClashes      int     // Someone else has booked the room for the same time
+	UserClashes      int     // User already has another booking for the same time.
+	ExistingSeconds  float64 // Number of seconds user has already made today.
+	ProximityClashes int     // Number of bookings made within buffer window
+}
+
 // DailyBookingLimit specify total maximum booking duration users can make in a day.
 // TODO: Allow admins to configure this through the dashboard.
-const DailyBookingLimit = 3 * 3600 // Limit of 3 hours per day.
+const (
+	DailyBookingLimit = 3 * 3600 // Limit of 3 hours per day.
+	BufferDuration    = 4 * time.Hour
+)
 
 func HandleNewBooking(c *gin.Context) {
 	userID := api.GetUIDFromContext(c)
@@ -74,64 +86,20 @@ func HandleNewBooking(c *gin.Context) {
 
 	// Calculate the duration of the *new* booking request
 	newDuration := newBooking.EndTime.Sub(newBooking.StartTime).Seconds()
-	// Define the start/end of the day for the quota check
-	dayStart := time.Date(newBooking.StartTime.Year(), newBooking.StartTime.Month(), newBooking.StartTime.Day(), 8, 0, 0, 0, newBooking.StartTime.Location())
-	dayEnd := dayStart.Add(18 * time.Hour) // Room closes at 2am.
 
 	// Begin transaction to make sure other users cannot create new bookings in the meantime.
 	tx := db.GormDB.Begin()
-
-	// Determine the type of clash
-	type Clash struct {
-		RoomClashes     int     // Someone else has booked the room for the same time
-		UserClashes     int     // User already has another booking for the same time.
-		ExistingSeconds float64 // Number of seconds user has already made today.
-	}
 
 	// ---------------------------------------------------------
 	// Branch here - no performance penalty for admins
 	// ---------------------------------------------------------
 	if userLevel < 2 {
 		// Student
-		durationSQL := "EXTRACT(EPOCH FROM (end_time - start_time))"
-
-		clashes, err := gorm.G[Clash](tx).Table("mrbs.bookings").
-			Select(`
-				-- 1. Check Room Clashes (Time Overlap)
-				COALESCE(SUM(CASE 
-					WHEN room_id = ? AND start_time < ? AND end_time > ? THEN 1 
-					ELSE 0 
-				END), 0) as room_clashes,
-
-				-- 2. Check User Clashes (Time Overlap)
-				COALESCE(SUM(CASE 
-					WHEN user_id = ? AND start_time < ? AND end_time > ? THEN 1 
-					ELSE 0 
-				END), 0) as user_clashes,
-
-				-- 3. Calculate Existing Duration for Today (Same Day)
-				COALESCE(SUM(CASE 
-					WHEN user_id = ? AND start_time >= ? AND end_time < ? 
-					THEN `+durationSQL+`
-					ELSE 0 
-				END), 0) as existing_seconds    `,
-				// Args for Room Clash
-				parsedRoomID, newBooking.EndTime, newBooking.StartTime,
-				// Args for User Clash
-				newBooking.UserID, newBooking.EndTime, newBooking.StartTime,
-				// Args for Quota
-				newBooking.UserID, dayStart, dayEnd).
-			Where(`
-				(start_time < ? AND end_time > ? AND (room_id = ? OR user_id = ?))
-				OR 
-				(user_id = ? AND start_time >= ? AND end_time < ?)
-			`, newBooking.EndTime, newBooking.StartTime, parsedRoomID, newBooking.UserID, // Overlap args
-				newBooking.UserID, dayStart, dayEnd, // Quota args
-			).Take(context.Background())
+		clashes, err := CheckClashes(&newBooking, tx, -1)
 		if err != nil {
 			log.Error().Err(err).Msg("Error encountered when checking for clashes")
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Please try again later.",
+				"error": constants.InternalServerErrorMsg,
 			})
 			return
 		}
@@ -140,7 +108,7 @@ func HandleNewBooking(c *gin.Context) {
 			log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": "Booking conflicts with existing booking. Please try another time.",
+				"error": constants.ExistingBookingClashMsg,
 			})
 			return
 		}
@@ -148,7 +116,7 @@ func HandleNewBooking(c *gin.Context) {
 			log.Warn().Msg("User has already made a booking for the same time at another room.")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": "Booking clashes with existing booking. You can only occupy one room at once. To book multiple rooms at the same time, contact the admin.",
+				"error": constants.UserClashMsg,
 			})
 			return
 		}
@@ -157,7 +125,17 @@ func HandleNewBooking(c *gin.Context) {
 			log.Warn().Interface("user_id", userID).Msg("Daily booking for user")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": "You have exceeded the maximum daily booking limit of 3 hours a day. Please try again tomorrow.",
+				"error": constants.DailyBookingLimitMsg,
+			})
+			return
+		}
+
+		// Check if users are abusing the system by making multiple small bookings in close proximity
+		if clashes.ProximityClashes > 0 {
+			log.Warn().Interface("user_id", userID).Msg("User attempting to book too close to existing booking")
+			tx.Rollback()
+			c.JSON(http.StatusConflict, gin.H{
+				"error": constants.MultipleBookingsMsg,
 			})
 			return
 		}
@@ -177,7 +155,7 @@ func HandleNewBooking(c *gin.Context) {
 		if numClashes > 0 {
 			log.Warn().Msg("Booking by admin clashes with existing booking.")
 			c.JSON(http.StatusConflict, gin.H{
-				"error": "Booking conflicts with existing booking. Please try another time.",
+				"error": constants.ExistingBookingClashMsg,
 			})
 			return
 		}
@@ -190,7 +168,7 @@ func HandleNewBooking(c *gin.Context) {
 		tx.Rollback()
 		log.Error().Err(err).Msg("Error creating booking")
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Error creating booking, please try again later.",
+			"error": constants.InternalServerErrorMsg,
 		})
 		return
 	}
@@ -201,4 +179,65 @@ func HandleNewBooking(c *gin.Context) {
 		"message":    fmt.Sprintf("Booking success, %v has been booked from %v to %v.", models.GetRoomNameFromID(int(newBooking.RoomID)), newBooking.StartTime.Format(models.DateTimeFormat), newBooking.EndTime.Format(models.DateTimeFormat)),
 		"booking_id": newBooking.BookingID,
 	})
+}
+
+// CheckClashes clash checking function, to be reused by edit-booking.go
+func CheckClashes(booking *models.Booking, tx *gorm.DB, bookingID int) (*Clash, error) {
+	// Define the start/end of the day for the quota check
+	dayStart := time.Date(booking.StartTime.Year(), booking.StartTime.Month(), booking.StartTime.Day(), 8, 0, 0, 0, booking.StartTime.Location())
+	dayEnd := dayStart.Add(18 * time.Hour) // Room closes at 2am.
+
+	// Calculate buffer times
+	bufferStart := booking.StartTime.Add(-BufferDuration)
+	bufferEnd := booking.EndTime.Add(BufferDuration)
+	durationSQL := "EXTRACT(EPOCH FROM (end_time - start_time))"
+
+	clashes, err := gorm.G[Clash](tx).Table("mrbs.bookings").
+		Select(`
+				-- 1. Check Room Clashes (Time Overlap)
+				COALESCE(SUM(CASE 
+					WHEN room_id = ? AND start_time < ? AND end_time > ? AND booking_id != ? THEN 1 
+					ELSE 0 
+				END), 0) as room_clashes,
+
+				-- 2. Check User Clashes (Time Overlap)
+				COALESCE(SUM(CASE 
+					WHEN user_id = ? AND start_time < ? AND end_time > ? AND booking_id != ? THEN 1 
+					ELSE 0 
+				END), 0) as user_clashes,
+
+				-- 3. Calculate Existing Duration for Today (Same Day)
+				COALESCE(SUM(CASE 
+					WHEN user_id = ? AND start_time >= ? AND end_time < ? AND booking_id != ?
+					THEN `+durationSQL+`
+					ELSE 0 
+				END), 0) as existing_seconds,
+				
+				-- 4. Check if there are any bookings within window 
+				COALESCE(SUM(CASE
+					WHEN user_id = ? AND end_time > ? AND start_time < ? AND booking_id != ? THEN 1
+					ELSE 0
+				END), 0) AS proximity_clashes
+			`,
+			// Args for Room Clash
+			booking.RoomID, booking.EndTime, booking.StartTime, bookingID,
+			// Args for User Clash
+			booking.UserID, booking.EndTime, booking.StartTime, bookingID,
+			// Args for Quota
+			booking.UserID, dayStart, dayEnd, bookingID,
+			// Args for window
+			booking.UserID, bufferStart, bufferEnd, bookingID,
+		).
+		Where(`
+				(start_time < ? AND end_time > ? AND (room_id = ? OR user_id = ?))
+				OR 
+				(user_id = ? AND start_time >= ? AND end_time < ?)
+			`, booking.EndTime, booking.StartTime, booking.RoomID, booking.UserID, // Overlap args
+			booking.UserID, dayStart, dayEnd, // Quota args
+		).Take(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return &clashes, nil
 }

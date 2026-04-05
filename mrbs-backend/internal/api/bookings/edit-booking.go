@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"rep-mrbs/internal/api"
+	"rep-mrbs/internal/constants"
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
 
@@ -38,8 +39,11 @@ func HandleEditBooking(c *gin.Context) {
 		return
 	}
 
+	userLevel := api.GetUserLevelFromContext(c)
+	userID := api.GetUIDFromContext(c)
+
 	// Check if user is admin or person who made original booking
-	if api.GetUIDFromContext(c) < 2 && originalBooking.UserID != api.GetUIDFromContext(c) {
+	if userLevel < 2 && originalBooking.UserID != userID {
 		log.Warn().Msg("Edit booking request made by non-admin who did not make original booking. ")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Unauthorized to edit booking. Booking can only be modified by admin or person who made original booking.",
@@ -76,26 +80,83 @@ func HandleEditBooking(c *gin.Context) {
 		return
 	}
 
+	duration := endTime.Sub(parsedStartTime).Seconds()
+
+	editedBooking := originalBooking
+	editedBooking.StartTime = parsedStartTime
+	editedBooking.EndTime = endTime
+	editedBooking.RoomID = uint(parsedRoomID)
+	editedBooking.Title = editedBookingReq.Title
+	editedBooking.Description = editedBookingReq.Description
+
 	// Begin transaction to make sure other users cannot make booking while we check and update current booking.
 	// We begin the transaction as late as possible to minimize time spent under lock.
 	tx := db.GormDB.Begin()
 
-	// Check if new booking clashes with existing bookings
-	numClashes, err := gorm.G[int](tx).Table("mrbs.bookings").Select("count(1)").Where("room_id = ? AND end_time > ? AND start_time < ? AND booking_id != ?", editedBookingReq.RoomID, parsedStartTime, endTime, bookingID).Take(context.Background())
-	if err != nil {
-		log.Error().Err(err).Msg("Error encountered when checking for clashes")
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Please try again later.",
-		})
-		return
-	}
-	log.Trace().Int("num clashes", numClashes).Msg("")
-	if numClashes > 0 {
-		log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Booking conflicts with existing booking",
-		})
-		return
+	if userLevel < 2 {
+		clashes, err := CheckClashes(&editedBooking, tx, int(originalBooking.BookingID))
+		if err != nil {
+			log.Error().Err(err).Msg("Error encountered when checking for clashes")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": constants.InternalServerErrorMsg,
+			})
+			return
+		}
+		log.Trace().Interface("Clashes", clashes).Msg("")
+		if clashes.RoomClashes > 0 {
+			log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
+			tx.Rollback()
+			c.JSON(http.StatusConflict, gin.H{
+				"error": constants.ExistingBookingClashMsg,
+			})
+			return
+		}
+		if clashes.UserClashes > 0 {
+			log.Warn().Msg("User has already made a booking for the same time at another room.")
+			tx.Rollback()
+			c.JSON(http.StatusConflict, gin.H{
+				"error": constants.UserClashMsg,
+			})
+			return
+		}
+
+		if (clashes.ExistingSeconds + duration) > DailyBookingLimit {
+			log.Warn().Interface("user_id", userID).Msg("Daily booking for user")
+			tx.Rollback()
+			c.JSON(http.StatusConflict, gin.H{
+				"error": constants.DailyBookingLimitMsg,
+			})
+			return
+		}
+
+		// Check if users are abusing the system by making multiple small bookings in close proximity
+		if clashes.ProximityClashes > 0 {
+			log.Warn().Interface("user_id", userID).Msg("User attempting to book too close to existing booking")
+			tx.Rollback()
+			c.JSON(http.StatusConflict, gin.H{
+				"error": constants.MultipleBookingsMsg,
+			})
+			return
+		}
+
+	} else {
+		// Check if new booking clashes with existing bookings
+		numClashes, err := gorm.G[int](tx).Table("mrbs.bookings").Select("count(1)").Where("room_id = ? AND end_time > ? AND start_time < ? AND booking_id != ?", editedBookingReq.RoomID, parsedStartTime, endTime, bookingID).Take(context.Background())
+		if err != nil {
+			log.Error().Err(err).Msg("Error encountered when checking for clashes")
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Please try again later.",
+			})
+			return
+		}
+		log.Trace().Int("num clashes", numClashes).Msg("")
+		if numClashes > 0 {
+			log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Booking conflicts with existing booking",
+			})
+			return
+		}
 	}
 
 	// Update booking by ID

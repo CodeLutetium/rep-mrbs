@@ -29,7 +29,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if err != nil {
 			log.Error().Err(err).Msg("session key missing in request")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "session key missing",
+				"error": "session key missing",
 			})
 			c.Abort()
 			return
@@ -40,7 +40,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Warn().Msg("Session not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "login session not found",
+				"error": "login session not found",
 			})
 			c.Abort()
 			return
@@ -64,7 +64,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 			}
 			log.Info().Int("rowsDeleted", rowsDeleted).Msg("Expired session deleted from database")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Login session has expired, please login again",
+				"error": "Login session has expired, please login again",
 			})
 			c.Abort()
 			return
@@ -73,7 +73,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if err != nil {
 			log.Error().Err(err).Msg("Error when fetching from sessions")
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": err.Error(),
+				"error": err.Error(),
 			})
 			c.Abort()
 			return
@@ -85,7 +85,7 @@ func AuthGuard(requiredLevel int) gin.HandlerFunc {
 		if err != nil {
 			log.Error().Err(err).Msg("Error when fetching from users")
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"message": err.Error(),
+				"error": err.Error(),
 			})
 			c.Abort()
 			return
