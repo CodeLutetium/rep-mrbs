@@ -8,7 +8,7 @@ export interface User {
 // Models PublicUser that is returned from the backend.
 // All columns (except password fields) from db are returned
 export interface UserData {
-    user_id: string;
+    user_id: number;
     level: number;
     name: string;
     display_name: string;

@@ -1,6 +1,8 @@
 import type { AxiosResponse } from "axios";
 import axiosInstance from "./axios-interceptor";
 import type { UserData } from "@/models/user";
+import type z from "zod";
+import { editUserSchema } from "@/components/admin/edit-user-form";
 
 /**
  * Fetches the list of all users from the server.
@@ -32,4 +34,15 @@ export async function insertUsers(users: string): Promise<AxiosResponse> {
  */
 export async function deleteUser(username: string): Promise<AxiosResponse> {
     return await axiosInstance.delete(`/users/${username}`, { validateStatus: (status) => status < 501 })
+}
+
+export async function editUser(data: z.infer<typeof editUserSchema>): Promise<AxiosResponse> {
+    const validatedData = editUserSchema.safeParse(data)
+
+    if (!validatedData.success) {
+        console.error(validatedData.error);
+        Promise.reject(validatedData.error);
+    }
+
+    return await axiosInstance.post(`/users/${validatedData.data?.name}`, validatedData.data, { validateStatus: (status) => status < 501 })
 }

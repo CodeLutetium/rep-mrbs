@@ -1,0 +1,25 @@
+info:
+  name: edit user
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: http://localhost:8080/api/users/editme
+  body:
+    type: json
+    data: |2-
+        {
+          "user_id": 44,
+          "level": 1,
+          "name": "jdson",
+          "display_name": "JASON JSON",
+          "email": "jdson@mail.com"
+        }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

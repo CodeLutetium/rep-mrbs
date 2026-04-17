@@ -16,6 +16,15 @@ import (
 func HandleDeleteUser(c *gin.Context) {
 	name := c.Param("user") // Delete user by username
 
+	// Block deletes to MRBS admin
+	if name == "MRBS_ADMIN" {
+		log.Warn().Msg("Deleting MRBS_ADMIN is not allowed")
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Deleting MRBS_ADMIN is forbidden. You naughty little rascal.",
+		})
+		return
+	}
+
 	res, err := gorm.G[models.User](db.GormDB).Where("name = ?", name).Delete(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting user")

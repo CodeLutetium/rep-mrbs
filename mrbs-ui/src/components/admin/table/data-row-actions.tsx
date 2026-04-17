@@ -18,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useAdmin } from "@/context/admin-context";
+import { Dialog } from "@/components/ui/dialog";
+import EditUserForm from "../edit-user-form";
 
 interface DataTableRowActionsProps {
   row: Row<UserData>;
@@ -26,6 +28,7 @@ interface DataTableRowActionsProps {
 export const DataTableRowActions = ({ row }: DataTableRowActionsProps) => {
   const user: UserData = row.original;
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { refreshUserData } = useAdmin();
 
   async function handleDelete() {
@@ -48,7 +51,7 @@ export const DataTableRowActions = ({ row }: DataTableRowActionsProps) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <Button variant={"ghost"} className={"h-8 w-8 p-0"}>
+          <Button variant={"ghost"} className={"cursor-pointer h-8 w-8 p-0"}>
             <MoreHorizontal />
             <span className="sr-only">Open menu</span>
           </Button>
@@ -62,11 +65,16 @@ export const DataTableRowActions = ({ row }: DataTableRowActionsProps) => {
             Copy email
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
 
-
-          <DropdownMenuItem>Edit Details</DropdownMenuItem>
-          <DropdownMenuItem className="text-red-600" onClick={() => setIsDeleteDialogOpen(true)}>Delete User</DropdownMenuItem>
+          {
+            user.name !== "MRBS_ADMIN" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>Edit Details</DropdownMenuItem>
+                <DropdownMenuItem className="text-red-600" onClick={() => setIsDeleteDialogOpen(true)}>Delete User</DropdownMenuItem>
+              </>
+            )
+          }
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -86,6 +94,13 @@ export const DataTableRowActions = ({ row }: DataTableRowActionsProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog >
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <EditUserForm user={user} onSubmit={() => {
+          setIsEditDialogOpen(false);
+          refreshUserData();
+        }} />
+      </Dialog>
     </>
   )
 }

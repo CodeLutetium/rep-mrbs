@@ -30,11 +30,18 @@ func HandleEditBooking(c *gin.Context) {
 	log.Info().Msgf("Edit booking request received for booking ID %s", bookingID)
 
 	// Fetch booking from the backend
-	originalBooking, err := gorm.G[models.Booking](db.GormDB).Where("booking_id = ?", bookingID).Take(context.TODO())
+	originalBooking, err := gorm.G[models.Booking](db.GormDB).Where("booking_id = ?", bookingID).Take(context.Background())
 	if err == gorm.ErrRecordNotFound {
 		log.Warn().Err(err).Msg("Booking ID not found in database.")
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Booking ID not found",
+		})
+		return
+	}
+	if err != nil {
+		log.Error().Err(err).Str("bookingID", bookingID).Msg("Error retrieving booking from database")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": constants.InternalServerErrorMsg,
 		})
 		return
 	}
