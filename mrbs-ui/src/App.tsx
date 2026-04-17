@@ -10,6 +10,7 @@ import PrivateRoutes from './components/private-route';
 import HelpPage from './pages/Help';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import AdminPage from './pages/Admin';
+import ChangelogPage from './pages/Changelog'
 
 function AppContent() {
 
@@ -34,6 +35,7 @@ function AppContent() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path='/help' element={<HelpPage />} />
+          <Route path="/whats-new" element={<ChangelogPage />} />
 
           {/* Private routes */}
           <Route element={<PrivateRoutes />}>

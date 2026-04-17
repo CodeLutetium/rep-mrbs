@@ -8,7 +8,7 @@ import {
 import { useUser } from "@/context/user-context"
 import { Link, } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck } from "lucide-react";
+import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck, ListPlus } from "lucide-react";
 
 export default function Navbar() {
   const user = useUser();
@@ -56,6 +56,12 @@ export default function Navbar() {
 
                     }
                     <DropdownMenuItem asChild>
+                      <Link className="cursor-pointer" to={"/whats-new"}>
+                        <ListPlus />
+                        What's new?
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link className="cursor-pointer" to={"/help"}>
                         <CircleQuestionMark />
                         Help
@@ -74,6 +80,7 @@ export default function Navbar() {
             ) :
               <NavigationMenuItem className={"flex flex-row"} >
                 <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/"}>Home</Link>} />
+                <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/whats-new"}>Changelog</Link>} />
                 <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/help"}>Help</Link>} />
                 <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/login"}>Login</Link>} />
               </NavigationMenuItem>
