@@ -9,9 +9,25 @@ import { useUser } from "@/context/user-context"
 import { Link, } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck, ListPlus } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export default function Navbar() {
   const user = useUser();
+  const CURRENT_VERSION = import.meta.env.VITE_APP_VERSION;
+  const [hasNewUpdate, setHasNewUpdate] = useState(false);
+
+  useEffect(() => {
+    const lastSeenVersion = localStorage.getItem("app_version");
+
+    if (lastSeenVersion !== CURRENT_VERSION) {
+      setHasNewUpdate(true);
+    }
+  }, [CURRENT_VERSION]);
+
+  const handleViewUpdates = () => {
+    localStorage.setItem("app_version", CURRENT_VERSION);
+    setHasNewUpdate(false);
+  };
 
   return (
     <div className="min-h-16 px-4  sticky min-w-full flex items-center justify-between">
@@ -56,9 +72,12 @@ export default function Navbar() {
 
                     }
                     <DropdownMenuItem asChild>
-                      <Link className="cursor-pointer" to={"/whats-new"}>
+                      <Link className="cursor-pointer" to={"/whats-new"} onClick={handleViewUpdates}>
                         <ListPlus />
                         What's new?
+                        {hasNewUpdate && (
+                          <span className="h-2 w-2 rounded-full bg-red-500" />
+                        )}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -80,7 +99,13 @@ export default function Navbar() {
             ) :
               <NavigationMenuItem className={"flex flex-row"} >
                 <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/"}>Home</Link>} />
-                <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/whats-new"}>Changelog</Link>} />
+                <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={
+                  <Link to={"/whats-new"} onClick={handleViewUpdates} className="relative flex items-center">
+                    Changelog
+                    {hasNewUpdate && (
+                      <span className="absolute top-2 right-1 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </Link>} />
                 <NavigationMenuLink className={navigationMenuTriggerStyle() + " hidden sm:block"} render={<Link to={"/help"}>Help</Link>} />
                 <NavigationMenuLink className={navigationMenuTriggerStyle()} render={<Link to={"/login"}>Login</Link>} />
               </NavigationMenuItem>
