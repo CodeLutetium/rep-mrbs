@@ -23,6 +23,7 @@ type GetBookingResponse struct {
 	Title            string    `json:"title"`
 	Description      string    `json:"description"`
 	RoomID           string    `json:"room_id"`
+	Colour           int       `json:"colour"`
 }
 
 func HandleGetBookings(c *gin.Context) {
@@ -36,7 +37,7 @@ func HandleGetBookings(c *gin.Context) {
 	// Hardcoded opening time of 8am and hardcoded closing time of 2am.
 	// Possible to use Gorm instead of raw SQL query.
 	query := `
-	SELECT b.booking_id, u.display_name booked_by, u.name booked_by_username, b.start_time,b.end_time, r.display_name room_name, b.title, b.description, b.room_id 
+	SELECT b.booking_id, u.display_name booked_by, u.name booked_by_username, b.start_time,b.end_time, r.display_name room_name, b.title, b.description, b.room_id, b.colour
 	FROM mrbs.BOOKINGS b 
 	INNER JOIN mrbs.USERS u ON b.user_id = u.user_id 
 	INNER JOIN mrbs.ROOMS r ON b.room_id = r.room_id 

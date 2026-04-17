@@ -34,7 +34,7 @@ export default function Login() {
         </div>
 
         <div className="text-muted-foreground text-xs text-center">
-          Last updated: 5 April 2026
+          Last updated: 17 April 2026
         </div>
       </div>
     </div>

@@ -23,6 +23,7 @@ type EditBookingRequest struct {
 	RoomID      string `json:"room_id" binding:"required"`
 	StartTime   string `json:"start_time" binding:"required"`
 	Duration    int    `json:"duration" binding:"required"`
+	Colour      int    `json:"colour"`
 }
 
 func HandleEditBooking(c *gin.Context) {
@@ -87,6 +88,13 @@ func HandleEditBooking(c *gin.Context) {
 		return
 	}
 
+	if editedBookingReq.Colour < 1 || editedBookingReq.Colour > models.MaxBookingColours {
+		log.Warn().Err(err).Int("requested colour", editedBookingReq.Colour).Msgf("Invalid colour chosen. Valid colour range: 1-%d", models.MaxBookingColours)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid colour",
+		})
+		return
+	}
 	duration := endTime.Sub(parsedStartTime).Seconds()
 
 	editedBooking := originalBooking
@@ -95,6 +103,7 @@ func HandleEditBooking(c *gin.Context) {
 	editedBooking.RoomID = uint(parsedRoomID)
 	editedBooking.Title = editedBookingReq.Title
 	editedBooking.Description = editedBookingReq.Description
+	editedBooking.Colour = editedBookingReq.Colour
 
 	// Begin transaction to make sure other users cannot make booking while we check and update current booking.
 	// We begin the transaction as late as possible to minimize time spent under lock.
@@ -173,6 +182,7 @@ func HandleEditBooking(c *gin.Context) {
 		RoomID:      uint(parsedRoomID),
 		StartTime:   parsedStartTime,
 		EndTime:     endTime,
+		Colour:      editedBookingReq.Colour,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Error updating booking")

@@ -13,4 +13,8 @@ type Booking struct {
 	Description string    `gorm:"column:description"`
 	IcalUID     string    `gorm:"column:ical_uid"`
 	IcalSeq     string    `gorm:"column:ical_seq; default:1"`
+	Colour      int       `gorm:"column:colour; default:1"`
 }
+
+// MaxBookingColours - Number of booking colours available
+const MaxBookingColours = 6

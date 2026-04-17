@@ -1,4 +1,4 @@
-import { getOpeningTime, type Booking } from "@/models/booking";
+import { COLOUR_MAP, getOpeningTime, type Booking } from "@/models/booking";
 import { Rooms, type Room } from "@/models/rooms";
 import { getBookings } from "@/services/booking-service";
 import dayjs, { Dayjs } from "dayjs";
@@ -23,7 +23,6 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
   const startTime: Dayjs = getOpeningTime(currDate);
   const TIME_SLOTS: Array<Dayjs> = Array.from({ length: 36 }, (_, i) => { return startTime.add(i * 30, "minute") })
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const ADMIN_USERNAME = "MRBS_ADMIN" // HARD CODED admin username
 
   const [now, setNow] = useState(dayjs()); // Track current time (for the red line)
 
@@ -251,25 +250,27 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
             booking.booked_by = `${booking.booked_by.slice(0, MAX_TEXT_LENGTH)}...`
           }
 
+          const colorSet = COLOUR_MAP[booking.colour] || COLOUR_MAP[1];
+
           return (
             <div
               key={booking.booking_id}
               className={cn(
-                booking.booked_by_username === ADMIN_USERNAME ? "border-rose-500 bg-rose-100 dark:bg-rose-900/80 dark:border-rose-400 " : "border-sky-500 dark:bg-sky-900/80 dark:border-sky-400 bg-sky-100 ",
-                " group truncate z-10 m-1 rounded border-l-4 p-2 text-xs shadow-sm hover:brightness-95 cursor-pointer overflow-hidden flex flex-col justify-center"
-              )
-              }
+                colorSet.bg,
+                colorSet.border,
+                "group truncate z-10 m-1 rounded border-l-4 p-2 text-xs shadow-sm hover:brightness-95 cursor-pointer overflow-hidden flex flex-col justify-center"
+              )}
               style={style}
               title={`${booking.title} (${dayjs(booking.start_time).format("HH:mm")} - ${dayjs(booking.end_time).format("HH:mm")})`}
               onClick={() => handleBookingClick(booking)}
             >
-              <div className="font-semibold text-sky-900 dark:text-sky-100 truncate">
+              <div className={cn("font-semibold truncate", colorSet.text)}>
                 {booking.title}
               </div>
-              <div className="text-sky-800 dark:text-sky-200 text-[11px] ">
+              <div className={cn("text-[11px] truncate", colorSet.booked_by)}>
                 {booking.booked_by}
               </div>
-              <div className="text-sky-700 dark:text-sky-300 truncate text-[10px] hidden group-hover:block" >
+              <div className={cn("truncate text-[10px] hidden group-hover:block", colorSet.time)}>
                 {dayjs(booking.start_time).format("hh:mm")} - {dayjs(booking.end_time).format("hh:mm A")}
               </div>
             </div>

@@ -23,7 +23,8 @@ type NewBookingRequest struct {
 	StartTime   string `json:"start_time" binding:"required"` // pass as string and parse into time object later.
 	NumPeriods  int    `json:"duration" binding:"required"`
 	Title       string `json:"title" binding:"required"`
-	Description string `json:"description"` // can be empty
+	Description string `json:"description" binding:"required"`
+	Colour      int    `json:"colour"`
 }
 
 // Clash - used to personalize the type of error message to return for any possible room booking conflicts
@@ -73,6 +74,14 @@ func HandleNewBooking(c *gin.Context) {
 		return
 	}
 
+	if newBookingReq.Colour < 1 || newBookingReq.Colour > models.MaxBookingColours {
+		log.Warn().Err(err).Int("requested colour", newBookingReq.Colour).Msgf("Invalid colour chosen. Valid colour range: 1-%d", models.MaxBookingColours)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid colour",
+		})
+		return
+	}
+
 	// Convert request into booking object for db insertion.
 	newBooking := models.Booking{
 		UserID:      userID,
@@ -82,7 +91,11 @@ func HandleNewBooking(c *gin.Context) {
 		RoomID:      uint(parsedRoomID),
 		Title:       newBookingReq.Title,
 		Description: newBookingReq.Description,
+		Colour:      newBookingReq.Colour,
 	}
+
+	// TODO delete this
+	log.Debug().Int("colour", newBookingReq.Colour).Msg("")
 
 	// Calculate the duration of the *new* booking request
 	newDuration := newBooking.EndTime.Sub(newBooking.StartTime).Seconds()

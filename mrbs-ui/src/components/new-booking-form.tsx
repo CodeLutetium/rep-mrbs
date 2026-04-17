@@ -21,6 +21,7 @@ import { HttpStatusCode, type AxiosResponse } from "axios";
 import { cn } from "@/lib/utils";
 import { UserRoleLevel } from "@/models/user";
 import { useBookingDuration } from "@/hooks/use-booking-durations";
+import { BOOKING_COLOURS, MAX_BOOKING_COLOURS } from "@/models/booking";
 
 export const bookingFormSchema = z.object({
   title: z.string().max(25).min(1, "Title cannot be empty"),
@@ -28,6 +29,7 @@ export const bookingFormSchema = z.object({
   description: z.string().max(300).optional(),
   start_time: z.instanceof(dayjs as unknown as typeof Dayjs),
   duration: z.int().min(1).max(36),
+  colour: z.int().min(1).max(MAX_BOOKING_COLOURS),
 })
 
 // 36 slots * 30 mins = 18 hours. 08:00 + 18h = 02:00 AM (Next Day)
@@ -79,6 +81,7 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
       description: user?.display_name,
       start_time: TIME_SLOTS.find((t) => t.toISOString() == time.toISOString()),
       duration: 2, // 1 hour
+      colour: user?.level === UserRoleLevel.Admin ? 6 : 1, // blue for students, red for admin.
     }
   })
 
@@ -92,6 +95,7 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
       description: user?.display_name,
       start_time: matchingSlotReference || time,
       duration: 2,
+      colour: user?.level === UserRoleLevel.Admin ? 6 : 1, // blue for students, red for admin.
     });
   }, [time, room, user, form]);
 
@@ -277,6 +281,35 @@ export default function NewBookingForm({ room, time, onSuccess }: { room: Room, 
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            />
+          </Field>
+
+          <Field className="grid grid-cols-3 items-center">
+            <FieldLabel>Booking Colour</FieldLabel>
+            <Controller
+              name="colour"
+              control={form.control}
+              render={({ field }) => (
+                <div className="col-span-2 flex items-center justify-end gap-3">
+                  {BOOKING_COLOURS
+                    .filter(color => color.id !== 6 || user?.level === UserRoleLevel.Admin)
+                    .map((color) => (
+                      <Button
+                        key={color.id}
+                        type="button"
+                        onClick={() => field.onChange(color.id)}
+                        className={cn(
+                          "h-6 w-6 rounded-full border-2 transition-all hover:scale-110",
+                          field.value === color.id
+                            ? "border-slate-950 ring-2 ring-slate-400 ring-offset-1 dark:border-slate-50"
+                            : "border-transparent"
+                        )}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.label}
+                      />
+                    ))}
+                </div>
               )}
             />
           </Field>
