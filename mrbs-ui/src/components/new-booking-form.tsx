@@ -24,7 +24,7 @@ import { useBookingDuration } from "@/hooks/use-booking-durations";
 import { BOOKING_COLOURS, MAX_BOOKING_COLOURS } from "@/models/booking";
 
 export const bookingFormSchema = z.object({
-  title: z.string().max(25).min(1, "Title cannot be empty"),
+  title: z.string().max(25, "Title is too long (max 25 characters)").min(1, "Title cannot be empty"),
   room_id: z.string(),
   description: z.string().max(300).optional(),
   start_time: z.instanceof(dayjs as unknown as typeof Dayjs),

@@ -12,6 +12,12 @@ export default function ChangelogPage() {
 
       <ReleaseTimeline>
         <ReleaseItem
+          date="28 April 2026"
+          type="fix"
+          title="Minor fix: behavior of truncated titles and names"
+          description="Long titles and names are now truncated correctly."
+        />
+        <ReleaseItem
           date="17 April 2026"
           type="new"
           title="Express yourself with booking colours"
