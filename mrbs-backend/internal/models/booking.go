@@ -2,6 +2,9 @@ package models
 
 import "time"
 
+// MaxBookingColours - Number of booking colours available
+const MaxBookingColours = 6
+
 type Booking struct {
 	BookingID   uint      `gorm:"column:booking_id; primaryKey"`
 	UserID      uint      `gorm:"column:user_id"`
@@ -16,5 +19,15 @@ type Booking struct {
 	Colour      int       `gorm:"column:colour; default:1"`
 }
 
-// MaxBookingColours - Number of booking colours available
-const MaxBookingColours = 6
+// BookingState tracks user progress when making a new booking via telegram bot
+type BookingState struct {
+	MessageID   int // track the MessageID to edit
+	Step        int // 0: Date, 1: Room, 2: Time, 3: Duration, 4: Title...
+	UserID      string
+	Date        time.Time
+	RoomID      int
+	StartTime   time.Time
+	NumPeriods  int
+	Title       string
+	Description string
+}
