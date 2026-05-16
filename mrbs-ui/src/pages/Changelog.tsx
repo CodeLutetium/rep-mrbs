@@ -12,6 +12,12 @@ export default function ChangelogPage() {
 
       <ReleaseTimeline>
         <ReleaseItem
+          date="16 May 2026"
+          type="new"
+          title="Make new bookings through Telegram!"
+          description="You can now create bookings through Telegram! Simply scan the QR code to link your Telegram account to MRBS, and you are all set. The Telegram booking feature is still in the development phase, so do expect improvements in the future!"
+        />
+        <ReleaseItem
           date="28 April 2026"
           type="fix"
           title="Minor fix: behavior of truncated titles and names"
