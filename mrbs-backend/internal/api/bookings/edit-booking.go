@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"rep-mrbs/internal/api"
-	"rep-mrbs/internal/constants"
+	"rep-mrbs/internal/booking"
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
 
@@ -42,7 +42,7 @@ func HandleEditBooking(c *gin.Context) {
 	if err != nil {
 		log.Error().Err(err).Str("bookingID", bookingID).Msg("Error retrieving booking from database")
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": constants.InternalServerErrorMsg,
+			"error": booking.ErrInternal.Message,
 		})
 		return
 	}
@@ -54,7 +54,7 @@ func HandleEditBooking(c *gin.Context) {
 	if userLevel < 2 && originalBooking.UserID != userID {
 		log.Warn().Msg("Edit booking request made by non-admin who did not make original booking. ")
 		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "Unauthorized to edit booking. Booking can only be modified by admin or person who made original booking.",
+			"error": booking.ErrUnauthorizedEdit.Message,
 		})
 		return
 	}
@@ -95,7 +95,6 @@ func HandleEditBooking(c *gin.Context) {
 		})
 		return
 	}
-	duration := endTime.Sub(parsedStartTime).Seconds()
 
 	editedBooking := originalBooking
 	editedBooking.StartTime = parsedStartTime
@@ -105,16 +104,18 @@ func HandleEditBooking(c *gin.Context) {
 	editedBooking.Description = editedBookingReq.Description
 	editedBooking.Colour = editedBookingReq.Colour
 
+	numPeriods := int(editedBooking.EndTime.Sub(editedBooking.StartTime).Minutes()) / models.BookingPeriodSize
+
 	// Begin transaction to make sure other users cannot make booking while we check and update current booking.
 	// We begin the transaction as late as possible to minimize time spent under lock.
 	tx := db.GormDB.Begin()
 
 	if userLevel < 2 {
-		clashes, err := CheckClashes(&editedBooking, tx, int(originalBooking.BookingID))
+		clashes, err := booking.CheckClashes(&editedBooking, tx, int(originalBooking.BookingID))
 		if err != nil {
 			log.Error().Err(err).Msg("Error encountered when checking for clashes")
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": constants.InternalServerErrorMsg,
+				"error": booking.ErrInternal.Message,
 			})
 			return
 		}
@@ -123,7 +124,7 @@ func HandleEditBooking(c *gin.Context) {
 			log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": constants.ExistingBookingClashMsg,
+				"error": booking.ErrRoomClash.Message,
 			})
 			return
 		}
@@ -131,16 +132,16 @@ func HandleEditBooking(c *gin.Context) {
 			log.Warn().Msg("User has already made a booking for the same time at another room.")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": constants.UserClashMsg,
+				"error": booking.ErrUserClash.Message,
 			})
 			return
 		}
 
-		if (clashes.ExistingSeconds + duration) > DailyBookingLimit {
+		if (clashes.ExistingPeriods + numPeriods) > models.DailyBookingLimit {
 			log.Warn().Interface("user_id", userID).Msg("Daily booking for user")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": constants.DailyBookingLimitMsg,
+				"error": booking.ErrDailyLimit.Message,
 			})
 			return
 		}
@@ -150,7 +151,7 @@ func HandleEditBooking(c *gin.Context) {
 			log.Warn().Interface("user_id", userID).Msg("User attempting to book too close to existing booking")
 			tx.Rollback()
 			c.JSON(http.StatusConflict, gin.H{
-				"error": constants.MultipleBookingsMsg,
+				"error": booking.ErrProximityClash.Message,
 			})
 			return
 		}
@@ -161,7 +162,7 @@ func HandleEditBooking(c *gin.Context) {
 		if err != nil {
 			log.Error().Err(err).Msg("Error encountered when checking for clashes")
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Please try again later.",
+				"error": booking.ErrInternal.Message,
 			})
 			return
 		}
@@ -169,7 +170,7 @@ func HandleEditBooking(c *gin.Context) {
 		if numClashes > 0 {
 			log.Warn().Msg("Booking clashes with existing booking. Please try another time.")
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Booking conflicts with existing booking",
+				"error": booking.ErrRoomClash.Message,
 			})
 			return
 		}
@@ -188,7 +189,7 @@ func HandleEditBooking(c *gin.Context) {
 		log.Error().Err(err).Msg("Error updating booking")
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Error updating booking, please try again later.",
+			"error": booking.ErrInternal.Message,
 		})
 	}
 	tx.Commit()

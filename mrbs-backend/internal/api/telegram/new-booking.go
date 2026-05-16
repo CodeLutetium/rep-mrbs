@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"rep-mrbs/internal/booking"
 	"rep-mrbs/internal/constants"
 	"rep-mrbs/internal/db"
 	m "rep-mrbs/internal/models"
@@ -14,10 +15,23 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
-// Map chatId to the current booking state
-var userStates = make(map[int64]*m.BookingState)
+/**
+* NOTES:
+* Handling the creation of new bookings via Telegram is a relatively complicated process as compared to using the API.
+* There are many approaches that we can take. To simplify things, we will use a wizard to guide the user through the creation
+* of a new booking. In the event that the booking is invalid (aka a clash has occured) because:
+* a. Another user has booked the room in the meantime
+* b. User has exceeded the booking limit for the day
+* c. User has concurrent bookings
+* d. Any other reasons not listed here
+* The wizard will check for clashes at the very end and advice the user if the booking cannot be created.
+* */
+
+// UserBookingStates Map chatId to the current booking state
+var UserBookingStates = make(map[int64]*m.BookingState)
 
 func HandleNewBooking(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message == nil {
@@ -25,26 +39,35 @@ func HandleNewBooking(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	// Check if user is in the process of creating a new booking
-	if _, exists := userStates[update.Message.Chat.ID]; exists {
+	if s, exists := UserBookingStates[update.Message.Chat.ID]; exists {
 		// User has a new booking in progress and ran "/new" command again. Let user choose whether to restart over or continue from where user left off.
 		log.Trace().Msg("/new is triggered by user who is in the midst of creating a new booking")
+
+		// Clean up the "stale" wizard message to prevent button confusion
+		_, _ = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			MessageID: s.MessageID,
+		})
 
 		// Prompt if user wants to create a new booking
 		kb := &models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
-				{{Text: "Discard previous booking", CallbackData: "discard_booking"}},
-				{{Text: "Continue from where I left off.", CallbackData: "continue_booking"}},
+				{{Text: "Discard previous booking", CallbackData: "wiz_action:discard_booking"}},
+				{{Text: "Continue from where I left off.", CallbackData: "wiz_action:continue_booking"}},
 			},
 		}
 
-		if _, err := b.SendMessage(ctx, &bot.SendMessageParams{
+		msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      update.Message.Chat.ID,
 			Text:        "You were previously in the middle of creating a new booking, which has not been completed. Would you like to continue from where you left off or start over?",
 			ParseMode:   models.ParseModeHTML,
 			ReplyMarkup: kb,
-		}); err != nil {
+		})
+		if err != nil {
 			log.Logger.Err(err).Msg(constants.SendTelegramMsgError)
 		}
+
+		s.MessageID = msg.ID
 		return
 	}
 
@@ -67,7 +90,7 @@ func OnWizardCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
 
 	data := update.CallbackQuery.Data
 	chatID := update.CallbackQuery.Message.Message.Chat.ID
-	msgID := userStates[chatID].MessageID
+	msgID := UserBookingStates[chatID].MessageID
 
 	// 2. Parse the data (e.g., "wiz_room:3")
 	// Use SplitN to ensure we only get two parts: the action and the value
@@ -85,7 +108,8 @@ func OnWizardCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func BookingWizardDispatcher(ctx context.Context, b *bot.Bot, chatID int64, msgID int, action string, value string) {
-	s, exists := userStates[chatID]
+	s, exists := UserBookingStates[chatID]
+	log.Debug().Interface("bookings state", s).Msg("booking state")
 	if !exists {
 		startBookingWizard(ctx, b, chatID)
 	}
@@ -112,21 +136,79 @@ func BookingWizardDispatcher(ctx context.Context, b *bot.Bot, chatID int64, msgI
 	}
 
 	switch action {
+	case "wiz_action":
+		switch value {
+		case "discard_booking":
+			log.Trace().Int64("chatID", chatID).Msg("Discard current booking")
+			_, _ = b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+				ChatID:    chatID,
+				MessageID: s.MessageID,
+			})
+			startBookingWizard(ctx, b, chatID)
+		case "continue_booking":
+			routeToStep(ctx, b, chatID, msgID, s.Step)
+			return
+		case "back":
+			if s.Step > 0 {
+				s.Step--
+			}
+			routeToStep(ctx, b, chatID, msgID, s.Step)
+			return
+		case "confirm":
+			s.Step = 6
+			handleCreateBooking(ctx, b, chatID)
+			return
+		}
+
 	case "wiz_date":
 		if s.Step != 0 {
-			log.Warn().Msg("User tried to skip steps")
+			log.Warn().Int("step", s.Step).Msg("User tried to skip steps")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Oops, an error has occured</b>\nIt appears that you have tried to skip steps. Please restart and try again.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
 			return
 		}
 		var err error
-		s.Date, err = time.Parse("02-01-2006", value)
+		s.StartTime, err = time.Parse("02-01-2006", value)
 		if err != nil {
 			log.Error().Err(err).Msg("Error parsing date")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Invalid Date Format</b>\nSomething went wrong while processing the date. Please try again. If this problem persists, contact the administrator.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
+			return
 		}
 		s.Step = 1
 		showRoomSelection(ctx, b, chatID, msgID)
 	case "wiz_room":
 		if s.Step != 1 {
-			log.Warn().Msg("User tried to skip steps")
+			log.Warn().Int("step", s.Step).Msg("User tried to skip steps")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Oops, an error has occured</b>\nIt appears that you have tried to skip steps. Please restart and try again.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
 			return
 		}
 		var err error
@@ -134,197 +216,278 @@ func BookingWizardDispatcher(ctx context.Context, b *bot.Bot, chatID int64, msgI
 		log.Debug().Int("room_id", s.RoomID).Msg("string parsed for room id")
 		if err != nil {
 			log.Error().Err(err).Msg("Error converting string to int")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>An error has occured</b>\nSomething went wrong. Please try again. If this problem persists, contact the administrator.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
 			return
 		}
 		if s.RoomID <= 0 || s.RoomID > len(m.CachedRooms) {
 			log.Error().Msg("How on earth do you even do this?? Anyway this is not a valid room id.")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>An error has occured</b>\nThis is not a valid room and you should never see this message! Maybe a huge renovation has occured and REP has added more rooms.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
 			return
 		}
 		s.Step = 2
 		showTimeSelection(ctx, b, chatID, msgID)
+	case "wiz_time":
+		if s.Step != 2 {
+			log.Warn().Int("step", s.Step).Msg("User tried to skip steps")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Oops, an error has occured</b>\nIt appears that you have tried to skip steps. Please restart and try again.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
+			return
+
+		}
+
+		bookingTime, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			log.Error().Err(err).Msg("Error parsing start time")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Invalid Time Format</b>\nSomething went wrong while processing the start time. Please try again. If this problem persists, contact the administrator.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
+			return
+		}
+
+		s.StartTime = bookingTime
+		s.Step = 3
+		showDurationSelection(ctx, b, chatID, msgID)
+	case "wiz_duration":
+		if s.Step != 3 {
+			log.Warn().Int("step", s.Step).Msg("User tried to skip steps")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>Oops, an error has occured</b>\nIt appears that you have tried to skip steps. Please restart and try again.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
+			return
+		}
+		numMinutes, err := strconv.Atoi(value)
+		if err != nil {
+			log.Error().Err(err).Msg("Error parsing minutes string")
+			_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+				ChatID:    chatID,
+				MessageID: msgID,
+				Text:      "⚠️ <b>An error has occured</b>\nSomething went wrong. Please try again. If this problem persists, contact the administrator.",
+				ParseMode: models.ParseModeHTML,
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: [][]models.InlineKeyboardButton{
+						{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+					},
+				},
+			})
+			return
+		}
+		s.NumPeriods = numMinutes / 30
+		s.Step = 4
+		showTitlePrompt(ctx, b, chatID, msgID)
 	}
-	// REMOVE
-	log.Debug().Interface("booking state", s).Msg("Current booking state")
+}
+
+func HandleSetTitle(ctx context.Context, b *bot.Bot, chatID int64, title string) {
+	s := UserBookingStates[chatID]
+
+	if s.Step != 4 {
+		log.Warn().Int("step", s.Step).Msg("User attept to skip steps")
+		_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: s.MessageID,
+			Text:      "⚠️ <b>Oops, an error has occured</b>\nIt appears that you have tried to skip steps. Please restart and try again.",
+			ParseMode: models.ParseModeHTML,
+			ReplyMarkup: &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+				},
+			},
+		})
+		return
+	}
+
+	// Set title and default description
+	// Trim whitespace to avoid empty-looking titles
+	cleanTitle := strings.TrimSpace(title)
+	if cleanTitle == "" {
+		cleanTitle = "Untitled Booking"
+	}
+
+	// Safe truncation using runes
+	runes := []rune(cleanTitle)
+	if len(runes) > m.MaxTitleLength {
+		s.Title = string(runes[:m.MaxTitleLength])
+	} else {
+		s.Title = cleanTitle
+	}
+	s.Description = "Booked via Telegram." // default description
+	s.Step = 5
+
+	showBookingSummary(ctx, b, chatID)
+}
+
+func handleCreateBooking(ctx context.Context, b *bot.Bot, chatID int64) {
+	s, exists := UserBookingStates[chatID]
+	if !exists {
+		log.Warn().Int64("chatID", chatID).Msg("chatID does not exist in user booking states.")
+		return
+	}
+
+	// Check that all previous steps have been completed
+	if s.Step != 6 {
+		log.Warn().Msg("Booking was not completed.")
+		_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: s.MessageID,
+			Text:      "⚠️ Error: Some steps were not completed. Please ensure all steps were completed.",
+			ParseMode: models.ParseModeHTML,
+			ReplyMarkup: &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+				},
+			},
+		})
+		return
+	}
+
+	tx := db.GormDB.Begin()
+
+	// Fetch user details
+	telegramUser, err := gorm.G[m.TelegramAuth](tx).Where("telegram_chat_id = ?", chatID).First(ctx)
+
+	if err == gorm.ErrRecordNotFound {
+		log.Error().Err(err).Msg("Telegram user not found in mrbs.telegram_auth table. Was the user removed or did the user unlink his account?")
+		_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: s.MessageID,
+			Text:      "Error: Telegram user not found. Please contact administrator.",
+			ParseMode: models.ParseModeHTML,
+			ReplyMarkup: &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+				},
+			},
+		})
+		return
+	}
+	if err != nil {
+		log.Error().Err(err).Int64("chatID", chatID).Msg("Error fetching user details from database")
+		_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: s.MessageID,
+			Text:      constants.DefaultErrorMsg,
+			ParseMode: models.ParseModeHTML,
+			ReplyMarkup: &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+				},
+			},
+		})
+		return
+	}
+
+	// Convert request into new booking struct
+	newBooking := m.Booking{
+		UserID:      telegramUser.UserID,
+		StartTime:   s.StartTime,
+		EndTime:     s.StartTime.Add(time.Duration(s.NumPeriods) * 30 * time.Minute),
+		TimeCreated: time.Now(),
+		RoomID:      uint(s.RoomID),
+		Title:       s.Title,
+		Description: s.Description,
+		Colour:      1,
+	}
+
+	bookingError := booking.CreateBooking(ctx, &newBooking)
+	if bookingError != nil {
+		_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: s.MessageID,
+			Text:      bookingError.Message,
+			ParseMode: models.ParseModeHTML,
+			ReplyMarkup: &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{{Text: "🔄 Restart Wizard", CallbackData: "wiz_action:discard_booking"}},
+				},
+			},
+		})
+		return
+	}
+
+	log.Info().Msg("booking successfully creation")
+
+	successText := fmt.Sprintf(
+		"🎉 <b>Booking success!</b>\n"+
+			"Your booking has been confirmed.\n\n"+
+			"🏢 <b>Room:</b> %s\n"+
+			"📅 <b>Date:</b> %s\n"+
+			"🕒 <b>Time:</b> %s — %s",
+		m.GetRoomNameFromID(int(newBooking.RoomID)),
+		newBooking.StartTime.Format("02 Jan 2006"),
+		newBooking.StartTime.Format("15:04"),
+		newBooking.EndTime.Format("15:04"),
+	)
+
+	_, _ = b.EditMessageText(ctx, &bot.EditMessageTextParams{
+		ChatID:    chatID,
+		MessageID: s.MessageID,
+		Text:      successText,
+		ParseMode: models.ParseModeHTML,
+	})
+
+	// Clear the state
+	delete(UserBookingStates, chatID)
 }
 
 func startBookingWizard(ctx context.Context, b *bot.Bot, chatID int64) {
-	userStates[chatID] = &m.BookingState{Step: 0}
+	UserBookingStates[chatID] = &m.BookingState{Step: 0}
 
-	var rows [][]models.InlineKeyboardButton
-
-	// Generate buttons for today and the next 2 days
-	for i := range 3 {
-		targetDate := time.Now().AddDate(0, 0, i)
-
-		// Button Display: "07 May 2026"
-		displayText := targetDate.Format("02 Jan 2006")
-
-		// Callback Data: "wiz_date:07-05-2026"
-		callbackVal := targetDate.Format("02-01-2006")
-
-		rows = append(rows, []models.InlineKeyboardButton{
-			{
-				Text:         displayText,
-				CallbackData: "wiz_date:" + callbackVal,
-			},
-		})
-	}
-
-	kb := &models.InlineKeyboardMarkup{InlineKeyboard: rows}
+	// Initial message creation
 	msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      chatID,
-		Text:        "📅 <b>Step 1: Select Date</b>\nWhen would you like to book? <i>(Yeah the dates are kinda limited here, use the website if you want to book Alan Turing 4 years ahead.)</i>",
-		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: kb,
-	})
-	if err != nil {
-		log.Logger.Err(err).Msg(constants.SendTelegramMsgError)
-	}
-
-	userStates[chatID].MessageID = msg.ID
-	log.Debug().Int("MessageID", msg.ID).Msg("Booking wizard started")
-}
-
-func showRoomSelection(ctx context.Context, b *bot.Bot, chatID int64, msgID int) {
-	if len(m.CachedRooms) == 0 {
-		log.Warn().Msg("Room cache is empty, attempting emergency fetch")
-		if err := m.InitRooms(); err != nil {
-			sendError(ctx, b, chatID)
-			return
-		}
-	}
-	var rows [][]models.InlineKeyboardButton
-	var currentRow []models.InlineKeyboardButton
-
-	for i, room := range m.CachedRooms {
-		btn := models.InlineKeyboardButton{
-			Text:         room.DisplayName,
-			CallbackData: fmt.Sprintf("wiz_room:%d", room.RoomID),
-		}
-		currentRow = append(currentRow, btn)
-
-		// Create a new row every 2 buttons (2-column layout)
-		if (i+1)%2 == 0 || i == len(m.CachedRooms)-1 {
-			rows = append(rows, currentRow)
-			currentRow = []models.InlineKeyboardButton{}
-		}
-	}
-
-	if _, err := b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:      chatID,
-		MessageID:   msgID,
-		Text:        "🏢 <b>Step 2: Select Room</b>\nWhich room do you need?",
-		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: &models.InlineKeyboardMarkup{InlineKeyboard: rows},
-	}); err != nil {
-		log.Error().Err(err).Msg(constants.SendTelegramMsgError)
-	}
-}
-
-func showTimeSelection(ctx context.Context, b *bot.Bot, chatID int64, msgID int) {
-	state, ok := userStates[chatID]
-	if !ok {
-		sendError(ctx, b, chatID)
-		return
-	}
-
-	// 1. Define bounds for the selected date
-	loc, _ := time.LoadLocation("Asia/Singapore")
-	now := time.Now().In(loc)
-
-	dateStr := state.Date.Format("2006-01-02")
-	endRange := state.Date.AddDate(0, 0, 1).Format("2006-01-02 02:00+08")
-
-	var startRange string
-	isToday := state.Date.Format("2006-01-02") == now.Format("2006-01-02")
-
-	if isToday {
-		startRange = now.Format(time.RFC3339)
-	} else {
-		startRange = fmt.Sprintf("%s 08:00+08", dateStr)
-	}
-
-	log.Debug().Str("start range", startRange).Msg("")
-
-	// 2. Fetch existing bookings for this room and day
-	var existingBookings []m.Booking
-	err := db.GormDB.Where("room_id = ? AND start_time >= ? AND start_time < ?",
-		state.RoomID, startRange, endRange).Find(&existingBookings).Error
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch bookings for time selection")
-		sendError(ctx, b, chatID)
-		return
-	}
-
-	// 3. Create a map of "Busy" timeslots (standardizing to HH:mm)
-	busySlots := make(map[string]bool)
-	for _, bk := range existingBookings {
-		// Mark every 30-min slot between StartTime and EndTime as busy
-		curr := bk.StartTime
-		for curr.Before(bk.EndTime) {
-			busySlots[curr.Format("15:04")] = true
-			curr = curr.Add(30 * time.Minute)
-		}
-	}
-
-	// 4. Generate the keyboard (8 AM to 2 AM)
-	var rows [][]models.InlineKeyboardButton
-	var currentRow []models.InlineKeyboardButton
-
-	slotTimeIter, _ := time.ParseInLocation("15:04", "08:00", loc)
-
-	for range 36 {
-		slotTimeStr := slotTimeIter.Format("15:04")
-
-		slotDate := state.Date
-		if slotTimeIter.Hour() < 8 {
-			slotDate = state.Date.AddDate(0, 0, 1)
-		}
-
-		// --- NEW LOGIC: Filter past slots if today ---
-		if isToday {
-			// Build the full timestamp for this specific slot
-			// state.Date provides the Y-M-D, slotTimeStr provides the H:M
-			fullSlotTime, _ := time.ParseInLocation("2006-01-02 15:04", slotDate.Format("2006-01-02")+" "+slotTimeStr, loc)
-
-			// If the slot is in the past, skip it
-			if fullSlotTime.Before(now) {
-				slotTimeIter = slotTimeIter.Add(30 * time.Minute)
-				continue
-			}
-		}
-
-		// Only add if not busy
-		if !busySlots[slotTimeStr] {
-			btn := models.InlineKeyboardButton{
-				Text:         slotTimeStr,
-				CallbackData: fmt.Sprintf("wiz_time:%s", slotTimeStr),
-			}
-			currentRow = append(currentRow, btn)
-		}
-
-		if len(currentRow) == 4 {
-			rows = append(rows, currentRow)
-			currentRow = []models.InlineKeyboardButton{}
-		}
-		slotTimeIter = slotTimeIter.Add(30 * time.Minute)
-	}
-
-	if len(currentRow) > 0 {
-		rows = append(rows, currentRow)
-	}
-	// 5. Update UI
-	text := fmt.Sprintf("🕒 <b>Step 3: Select Start Time</b>\nRoom: %s\nDate: %s\n\nOnly available slots are shown.",
-		m.GetRoomNameFromID(int(state.RoomID)), state.Date.Format("02 Jan"))
-
-	_, err = b.EditMessageText(ctx, &bot.EditMessageTextParams{
-		ChatID:      chatID,
-		MessageID:   msgID,
-		Text:        text,
-		ParseMode:   models.ParseModeHTML,
-		ReplyMarkup: &models.InlineKeyboardMarkup{InlineKeyboard: rows},
+		ChatID:    chatID,
+		Text:      "🌟 Initializing booking wizard...",
+		ParseMode: models.ParseModeHTML,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg(constants.SendTelegramMsgError)
+		return
 	}
+
+	UserBookingStates[chatID].MessageID = msg.ID
+	showDateSelection(ctx, b, chatID, msg.ID)
 }

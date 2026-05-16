@@ -27,13 +27,13 @@ func HandleStartChat(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// Message format: "/start <start_code>"
 	parts := strings.Split(update.Message.Text, " ")
 
-	tx := db.GormDB.Begin()
+	tx := db.GormDB.WithContext(ctx).Begin()
 	defer tx.Rollback()
 
 	// /start with no code provided
 	if len(parts) < 2 {
 		// Check if user has already linked their account
-		_, err := gorm.G[m.TelegramAuth](tx).Where("telegram_chat_id = ?", update.Message.Chat.ID).Take(context.Background())
+		_, err := gorm.G[m.TelegramAuth](tx).Where("telegram_chat_id = ?", update.Message.Chat.ID).Take(ctx)
 		if err == gorm.ErrRecordNotFound {
 			_, err := b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
@@ -56,11 +56,25 @@ func HandleStartChat(ctx context.Context, b *bot.Bot, update *models.Update) {
 		return
 	}
 
+	// Check if telegram_chat_id is associated with another account
+	oldAccount, err := gorm.G[m.TelegramAuth](tx).Where("telegram_chat_id = ?", update.Message.Chat.ID).Take(ctx)
+	if err != gorm.ErrRecordNotFound {
+		// Record exists: another account has already been linked to this chatid
+		log.Warn().Int64("chatID", update.Message.Chat.ID).Msg("another mrbs account has already been linked to this telegram account")
+		_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			ParseMode: models.ParseModeHTML,
+			Text:      "<b>⚠️Warning</b>\nyou have previously linked a different REP-MRBS account to this Telegram account. The previous account will be <b>unlinked</b> and the new account will be linked to this chat.",
+		})
+		oldAccount.TelegramChatID = nil
+		tx.Save(oldAccount)
+	}
+
 	// Verify start_code with database
 	startCode := parts[1]
 
 	timeLimit := time.Now().Add(-5 * time.Minute) // Time 5 minutes ago - ensures that we fetch fresh auth code (created within last 5 Minutes)
-	row, err := gorm.G[m.TelegramAuth](tx).Where("auth_token = ?", startCode).Where("created_at >= ?", timeLimit).Take(context.Background())
+	row, err := gorm.G[m.TelegramAuth](tx).Where("auth_token = ?", startCode).Where("created_at >= ?", timeLimit).Take(ctx)
 	if err == gorm.ErrRecordNotFound {
 		log.Error().Err(err).Msg("Start code expired or not found in database")
 		_, err := b.SendMessage(ctx, &bot.SendMessageParams{
@@ -93,11 +107,8 @@ func HandleStartChat(ctx context.Context, b *bot.Bot, update *models.Update) {
 	tx.Commit()
 	log.Debug().Msg("chatID saved to database")
 
-	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+	_, _ = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text:   "Account linked successfully. Welcome to REP Meeting Room Booking bot!",
 	})
-	if err != nil {
-		log.Error().Err(err).Msg("Error sending telegram message")
-	}
 }
