@@ -13,6 +13,7 @@ import (
 	"rep-mrbs/internal/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 )
@@ -20,6 +21,8 @@ import (
 var sessionKeyLifetime int
 
 func init() {
+	_ = godotenv.Load("./config/.env")
+
 	lifetime, err := strconv.Atoi(os.Getenv("SESSION_KEY_LIFETIME"))
 	if err != nil {
 		// Use fallback value of 1 week
@@ -126,6 +129,7 @@ func RotateSession(user *models.User, c *gin.Context, oldKey string) {
 	})
 }
 
+// TODO: Replace this with models.GenerateSessionKey()
 func generateSessionKey() (string, error) {
 	const SessionKeyLen = 32
 

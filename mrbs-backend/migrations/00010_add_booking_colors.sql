@@ -1,6 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE mrbs.bookings ADD colour integer DEFAULT 1 NULL;
+-- +goose StatementEnd
 
 -- +goose StatementEnd
 

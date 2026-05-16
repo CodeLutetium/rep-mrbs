@@ -241,14 +241,6 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
 
           // Manual truncation coz for some reason I couldn't get the tailwind classes to cooperate.
           const MAX_TEXT_LENGTH = 20;
-          if (booking.title.length > MAX_TEXT_LENGTH) {
-            booking.title = booking.title.slice(0, MAX_TEXT_LENGTH);
-            booking.title = `${booking.title}...`
-          }
-
-          if (booking.booked_by.length > MAX_TEXT_LENGTH) {
-            booking.booked_by = `${booking.booked_by.slice(0, MAX_TEXT_LENGTH)}...`
-          }
 
           const colorSet = COLOUR_MAP[booking.colour] || COLOUR_MAP[1];
 
@@ -265,10 +257,10 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
               onClick={() => handleBookingClick(booking)}
             >
               <div className={cn("font-semibold truncate", colorSet.text)}>
-                {booking.title}
+                {booking.title.slice(0, MAX_TEXT_LENGTH)}{booking.title.length > MAX_TEXT_LENGTH && "..."}
               </div>
               <div className={cn("text-[11px] truncate", colorSet.booked_by)}>
-                {booking.booked_by}
+                {booking.booked_by.slice(0, MAX_TEXT_LENGTH)}{booking.booked_by.length > MAX_TEXT_LENGTH && "..."}
               </div>
               <div className={cn("truncate text-[10px] hidden group-hover:block", colorSet.time)}>
                 {dayjs(booking.start_time).format("hh:mm")} - {dayjs(booking.end_time).format("hh:mm A")}

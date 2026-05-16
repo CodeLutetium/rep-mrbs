@@ -8,7 +8,7 @@ import {
 import { useUser } from "@/context/user-context"
 import { Link, } from "react-router-dom"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck, ListPlus } from "lucide-react";
+import { LogOutIcon, KeyRound, ChevronDown, CircleQuestionMark, ShieldCheck, ListPlus, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export default function Navbar() {
@@ -42,6 +42,7 @@ export default function Navbar() {
 
       <NavigationMenu>
         <NavigationMenuList>
+          {/** Navbar for authenticated users */}
           {
             user ? (<div className="flex items-center gap-2">
               <DropdownMenu>
@@ -71,6 +72,12 @@ export default function Navbar() {
                       </DropdownMenuItem>
 
                     }
+                    <DropdownMenuItem asChild>
+                      <Link className="group cursor-pointer flex items-center gap-2" to="/link-telegram">
+                        <Send className="transition-transform duration-300 ease-in-out group-hover:rotate-12 group-hover:scale-110" />
+                        <span>New: Link Telegram</span>
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link className="cursor-pointer" to={"/whats-new"} onClick={handleViewUpdates}>
                         <ListPlus />

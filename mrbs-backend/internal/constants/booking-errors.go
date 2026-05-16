@@ -1,6 +1,7 @@
 // Package constants constants
 package constants
 
+/**
 const (
 	UnauthorizedBookingEditErrorMsg = "Unauthorized to edit booking. Booking can only be modified by admin or person who made original booking."
 	// Generic message for 500 errors
@@ -14,3 +15,4 @@ const (
 	// Used when user tries to abuse the system by creating multiple mini bookings
 	MultipleBookingsMsg = "You have an existing booking within 4 hours of the new booking. The 3-hour limit is in place to ensure fair access for everyone and should not be misused."
 )
+*/

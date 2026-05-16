@@ -18,9 +18,9 @@ export async function getBookings(date: string): Promise<Booking[]> {
 }
 
 export interface NewBookingResponse {
-    booking_id: number,
-    message: string,
-    error: string,
+    booking_id: number;
+    message: string;
+    error: string;
 }
 
 

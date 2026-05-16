@@ -11,6 +11,7 @@ import HelpPage from './pages/Help';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import AdminPage from './pages/Admin';
 import ChangelogPage from './pages/Changelog'
+import LinkTelegramPage from './pages/LinkTelegram';
 
 function AppContent() {
 
@@ -41,6 +42,7 @@ function AppContent() {
           <Route element={<PrivateRoutes />}>
             <Route path='/logout' element={<Logout />} />
             <Route path='/change-password' element={<ChangePassword />} />
+            <Route path='/link-telegram' element={<LinkTelegramPage />} />
           </Route>
 
           {/* Admin routes */}

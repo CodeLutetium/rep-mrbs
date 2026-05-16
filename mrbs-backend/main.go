@@ -11,8 +11,10 @@ import (
 	"rep-mrbs/internal/api"
 	"rep-mrbs/internal/api/auth"
 	"rep-mrbs/internal/api/bookings"
+	"rep-mrbs/internal/api/telegram"
 	"rep-mrbs/internal/api/users"
 	"rep-mrbs/internal/db"
+	"rep-mrbs/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -23,10 +25,7 @@ import (
 func init() {
 	_ = godotenv.Load("./config/.env")
 
-	_, exists := os.LookupEnv("SESSION_KEY_LIFETIME")
-	if !exists {
-		log.Fatal().Msg("SESSION_KEY_LIFETIME is not set in config/.env")
-	}
+	db.Init()
 }
 
 //go:embed dist/*
@@ -36,12 +35,18 @@ func main() {
 	// Configure Logger
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
-	db.Init()
-
 	router := gin.Default()
+
+	// Set up cache
+	models.InitRooms()
 
 	// API routes
 	apiGroup := router.Group("/api")
+
+	// Initialize telegram routes
+	telegramGroup := apiGroup.Group("/telegram")
+	telegram.RegisterTelegramRoutes(telegramGroup)
+
 	// Auth routes
 	authGroup := apiGroup.Group("/auth")
 	auth.RegisterAuthRoutes(authGroup)
