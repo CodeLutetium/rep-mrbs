@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
@@ -25,7 +26,7 @@ func HandleDeleteUser(c *gin.Context) {
 		return
 	}
 
-	res, err := gorm.G[models.User](db.GormDB).Where("name = ?", name).Delete(context.Background())
+	res, err := gorm.G[models.User](db.GormDB).Where("name = ?", strings.ToUpper(name)).Delete(context.Background())
 	if err != nil {
 		log.Error().Err(err).Msg("Error deleting user")
 		c.JSON(http.StatusInternalServerError, gin.H{

@@ -73,7 +73,7 @@ func HandleInsertUsers(c *gin.Context) {
 				// Skip lines with invalid emails lacking '@'
 				continue
 			}
-			username := emailParts[0]
+			username := strings.ToUpper(emailParts[0])
 
 			pwhash, err := argon2id.CreateHash(defaultPassword, argon2id.DefaultParams)
 			if err != nil {
@@ -89,7 +89,7 @@ func HandleInsertUsers(c *gin.Context) {
 				PublicUser: models.PublicUser{
 					Name:        username,
 					DisplayName: displayName,
-					Email:       email,
+					Email:       strings.ToLower(email),
 					Level:       1,
 					TimeCreated: time.Now(),
 				},

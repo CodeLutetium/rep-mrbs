@@ -47,11 +47,19 @@ func HandleLogin(c *gin.Context) {
 
 	db := db.GormDB
 
-	// Strip email from username
-	name, _, _ := strings.Cut(form.Username, "@")
-
 	// Verify password
-	user, err := gorm.G[models.User](db).Table("mrbs.users").Where("name = ?", strings.ToUpper(name)).Take(context.Background())
+	var user models.User
+	var err error
+
+	query := db.WithContext(context.Background()).Table("mrbs.users")
+
+	// User entered email address: compare email
+	if strings.Contains(form.Username, "@") {
+		err = query.Where("email = ?", strings.ToLower(form.Username)).Take(&user).Error
+	} else {
+		err = query.Where("name = ?", strings.ToUpper(form.Username)).Take(&user).Error
+	}
+
 	if err == gorm.ErrRecordNotFound {
 		log.Warn().Err(err).Msg("username not found")
 		c.JSON(http.StatusOK, LoginResponse{

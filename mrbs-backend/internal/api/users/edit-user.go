@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"rep-mrbs/internal/constants"
 	"rep-mrbs/internal/db"
@@ -61,7 +62,7 @@ func HandleEditUser(c *gin.Context) {
 
 	updateData := map[string]any{
 		"display_name": editUserRequest.DisplayName,
-		"name":         editUserRequest.Name,
+		"name":         strings.ToUpper(editUserRequest.Name),
 		"email":        editUserRequest.Email,
 		"level":        editUserRequest.Level,
 	}

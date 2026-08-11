@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"strings"
 
 	"rep-mrbs/internal/db"
 	"rep-mrbs/internal/models"
@@ -49,7 +50,7 @@ func HandleResetPassword(c *gin.Context) {
 		return
 	}
 
-	rowsUpdated, err := gorm.G[models.User](db.GormDB).Where("email = ?", form.Email).Update(context.Background(), "password_hash", pwhash)
+	rowsUpdated, err := gorm.G[models.User](db.GormDB).Where("email = ?", strings.ToLower(form.Email)).Update(context.Background(), "password_hash", pwhash)
 	if err != nil {
 		log.Error().Msg("Error occurred updating password in database")
 		c.JSON(http.StatusInternalServerError, gin.H{
