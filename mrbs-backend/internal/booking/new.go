@@ -22,11 +22,6 @@ type Clash struct {
 }
 
 func CreateBooking(ctx context.Context, booking *models.Booking) *BookingError {
-	// 1. Logic-only validation (e.g., color range)
-	if booking.Colour < 1 || booking.Colour > models.MaxBookingColours {
-		return NewBookingError("color out of range")
-	}
-
 	numPeriods := int(booking.EndTime.Sub(booking.StartTime).Minutes()) / models.BookingPeriodSize
 
 	tx := db.GormDB.WithContext(ctx).Begin()
@@ -45,7 +40,7 @@ func CreateBooking(ctx context.Context, booking *models.Booking) *BookingError {
 		return ErrUnknownUser
 	}
 
-	// 3. Validation Logic (extracted from your HandleNewBooking)
+	// Validation Logic (extracted from your HandleNewBooking)
 	if user.Level < 2 {
 		clashes, err := CheckClashes(booking, tx, -1)
 		if err != nil {
@@ -69,6 +64,13 @@ func CreateBooking(ctx context.Context, booking *models.Booking) *BookingError {
 			tx.Rollback()
 			return ErrProximityClash
 		}
+
+		// 04 Oct 2026: users can only make bookings up to one week in advance
+		if !IsBookingValid(booking) {
+			log.Warn().Interface("booking", booking).Msg("user attempting to book more than one week in advance")
+			return ErrAdvancedBooking
+		}
+
 	} else {
 		// Admin clash logic
 		numClashes, err := gorm.G[int](tx).
@@ -87,7 +89,7 @@ func CreateBooking(ctx context.Context, booking *models.Booking) *BookingError {
 		}
 	}
 
-	// 4. Final Insertion
+	// Insert into db
 	result := gorm.WithResult()
 	if err = gorm.G[models.Booking](tx).Create(ctx, booking); err != nil {
 		log.Error().Err(err).Msg("error creating new booking")
@@ -104,6 +106,20 @@ func CreateBooking(ctx context.Context, booking *models.Booking) *BookingError {
 	}
 
 	return nil
+}
+
+// IsBookingValid returns false if booking is more than one week in advance
+// Cutoff time: Saturday EOD
+func IsBookingValid(booking *models.Booking) bool {
+	loc, _ := time.LoadLocation("Asia/Singapore")
+
+	now := time.Now().In(loc)
+	daysToSaturday := int(time.Saturday - now.Weekday())
+	targetSaturday := now.AddDate(0, 0, daysToSaturday)
+
+	cutoff := time.Date(targetSaturday.Year(), targetSaturday.Month(), targetSaturday.Day()+1, 0, 0, 0, 0, loc)
+
+	return booking.StartTime.Before(cutoff)
 }
 
 // CheckClashes clash checking function, to be reused by edit-booking.go

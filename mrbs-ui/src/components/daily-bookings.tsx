@@ -12,6 +12,7 @@ import { useUser } from "@/context/user-context";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import BookingDialog from "./booking";
+import { UserRoleLevel } from "@/models/user";
 dayjs.extend(isBetween);
 
 /**
@@ -137,6 +138,19 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
     });
   };
 
+  // 04 Oct 2026: do not allow bookings made more than one week in advance 
+  // If slot is more than one week ahead and user is not admin, do not open booking dialog 
+  const isSlotBookable = (slotTime: Dayjs): boolean => {
+    // Allow admin to book more than 1 week in advance 
+    if (user && user.level >= UserRoleLevel.Admin)
+      return true;
+
+    // Only allow bookings till Saturday EOD
+    let cutoff = dayjs().day(6).endOf('day')
+
+    return !slotTime.isAfter(cutoff)
+  }
+
   const handleSlotClick = (room: Room, time: Dayjs) => {
     // Double check to prevent hacking via console
     if (isSlotOccupied(room.room_id, time)) return;
@@ -144,6 +158,12 @@ export default function DailyBookings({ currDate }: { currDate: Dayjs }) {
     // If user is not logged in, redirect to login page.
     if (user == null)
       navigate(`/login?redirect=${time.format("YYYY-MM-DD")}`)
+
+    // Check if user is allowed to click on slot based on the 1 week advance booking rule 
+    if (!isSlotBookable(time)) {
+      toast.message("You are only allowed to make bookings up to 1 week in advance. Contact REClub to make bookings more than one week in advance.")
+      return
+    }
 
     setSelectedSlot({ room, time });
     setIsNewBookingDialogOpen(true);

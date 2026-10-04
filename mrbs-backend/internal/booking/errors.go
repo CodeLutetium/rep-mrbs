@@ -59,6 +59,12 @@ var (
 		Err:            fmt.Errorf("user has existing booking within %d hours of new booking", models.BufferDuration/60),
 		Message:        fmt.Sprintf("You have an existing booking within %d hours of the new booking. The %d-hour limit is in place to ensure fair access for everyone and should not be misused.", models.BufferDuration/60, models.DailyBookingLimit*models.BookingPeriodSize/60),
 	}
+	// Use if booking is made more than one week in advance
+	ErrAdvancedBooking = &BookingError{
+		HTTPStatusCode: http.StatusConflict,
+		Err:            fmt.Errorf("booking is made more than 1 week in advance."),
+		Message:        "You are only allowed to make bookings up to 1 week in advance. Contact REClub to make bookings more than one week in advance.",
+	}
 	ErrInternal = &BookingError{
 		HTTPStatusCode: http.StatusInternalServerError,
 		Err:            errors.New("an error has occured when making the booking"),

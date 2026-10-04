@@ -12,6 +12,12 @@ export default function ChangelogPage() {
 
       <ReleaseTimeline>
         <ReleaseItem
+          date="04 October 2026"
+          type="improvement"
+          title="Advanced bookings"
+          description="Due to shameful behaviors (smh), you can only make bookings up to one week in advance. Slots will become bookable on Sunday. To book more than one week in advance, contact the admin/REClub"
+        />
+        <ReleaseItem
           date="16 May 2026"
           type="new"
           title="Make new bookings through Telegram!"
@@ -20,7 +26,7 @@ export default function ChangelogPage() {
         <ReleaseItem
           date="28 April 2026"
           type="fix"
-          title="Minor fix: behavior of truncated titles and names"
+          title="Long titles and names"
           description="Long titles and names are now truncated correctly."
         />
         <ReleaseItem

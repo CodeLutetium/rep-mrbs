@@ -156,6 +156,15 @@ func HandleEditBooking(c *gin.Context) {
 			return
 		}
 
+		// 04 Oct 2026: users can only make bookings up to one week in advance
+		if !booking.IsBookingValid(&editedBooking) {
+			log.Warn().Interface("booking", editedBooking).Msg("user attempting to book more than one week in advance")
+			c.JSON(http.StatusConflict, gin.H{
+				"error": booking.ErrAdvancedBooking.Message,
+			})
+			return
+		}
+
 	} else {
 		// Check if new booking clashes with existing bookings
 		numClashes, err := gorm.G[int](tx).Table("mrbs.bookings").Select("count(1)").Where("room_id = ? AND end_time > ? AND start_time < ? AND booking_id != ?", editedBookingReq.RoomID, parsedStartTime, endTime, bookingID).Take(context.Background())
